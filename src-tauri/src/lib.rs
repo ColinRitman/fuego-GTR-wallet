@@ -73,6 +73,24 @@ pub fn run() {
             get_term_deposits,
             create_term_deposit,
             withdraw_term_deposit,
+            // fuego-wallet compatibility aliases
+            wallet_create,
+            wallet_open,
+            wallet_get_info,
+            wallet_get_balance,
+            wallet_get_address,
+            wallet_get_transactions,
+            wallet_send_transaction,
+            wallet_refresh,
+            wallet_rescan,
+            network_get_status,
+            node_connect,
+            node_disconnect,
+            deposit_list,
+            deposit_create,
+            deposit_withdraw,
+            estimate_fee,
+            validate_address,
             // Security commands
             authenticate_user,
             validate_session,
@@ -450,6 +468,117 @@ async fn get_network_status() -> Result<serde_json::Value, String> {
     
     // Get real network status
     real_wallet.get_network_status().map_err(|e| e.to_string())
+}
+
+// ===== fuego-wallet compatibility aliases =====
+
+#[tauri::command]
+async fn wallet_create(password: String, file_path: String, seed_phrase: Option<String>, restore_height: Option<u64>) -> Result<String, String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    wallet.create_wallet(&password, &file_path, seed_phrase.as_deref(), restore_height.unwrap_or(0))
+        .map_err(|e| e.to_string())?;
+    let address = wallet.get_address().map_err(|e| e.to_string())?;
+    Ok(address)
+}
+
+#[tauri::command]
+async fn wallet_open(file_path: String, password: String) -> Result<String, String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    wallet.open_wallet(&file_path, &password).map_err(|e| e.to_string())?;
+    let address = wallet.get_address().map_err(|e| e.to_string())?;
+    Ok(address)
+}
+
+#[tauri::command]
+async fn wallet_get_info() -> Result<serde_json::Value, String> { get_wallet_info().await }
+
+#[tauri::command]
+async fn wallet_get_balance() -> Result<u64, String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    let _ = wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+    wallet.get_balance().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn wallet_get_address() -> Result<String, String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    let _ = wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+    wallet.get_address().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn wallet_get_transactions(limit: Option<u64>, offset: Option<u64>) -> Result<Vec<serde_json::Value>, String> {
+    get_transactions(limit, offset).await
+}
+
+#[tauri::command]
+async fn wallet_send_transaction(recipient: String, amount: u64, payment_id: Option<String>, mixin: Option<u64>) -> Result<String, String> {
+    send_transaction(recipient, amount, payment_id, mixin.unwrap_or(5)).await
+}
+
+#[tauri::command]
+async fn wallet_refresh() -> Result<(), String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    let _ = wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+    wallet.refresh().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn wallet_rescan(start_height: Option<u64>) -> Result<(), String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    let _ = wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+    wallet.rescan_blockchain(start_height.unwrap_or(0)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn network_get_status() -> Result<serde_json::Value, String> { get_network_status().await }
+
+#[tauri::command]
+async fn node_connect(address: Option<String>, port: Option<u16>) -> Result<(), String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    let _ = wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+    if let Some(addr) = address {
+        wallet.connect_to_node(&addr, port.unwrap_or(18180)).map_err(|e| e.to_string())
+    } else {
+        connect_to_fuego_network(&mut wallet).map_err(|e| e.to_string())
+    }
+}
+
+#[tauri::command]
+async fn node_disconnect() -> Result<(), String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    let _ = wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+    wallet.disconnect().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn deposit_list() -> Result<Vec<serde_json::Value>, String> { get_term_deposits().await }
+
+#[tauri::command]
+async fn deposit_create(amount: u64, term: u32) -> Result<String, String> { create_term_deposit(amount, term).await }
+
+#[tauri::command]
+async fn deposit_withdraw(deposit_id: String) -> Result<String, String> { withdraw_term_deposit(deposit_id).await }
+
+#[tauri::command]
+async fn estimate_fee(address: String, amount: u64, mixin: Option<u64>) -> Result<u64, String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    let _ = wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+    wallet.estimate_transaction_fee(&address, amount, mixin.unwrap_or(5)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn validate_address(address: String) -> Result<bool, String> {
+    // Basic format validation (placeholder). Real validation should call into CryptoNote.
+    let valid = address.starts_with("fire") && address.len() >= 60;
+    Ok(valid)
 }
 
 /// Test FFI integration

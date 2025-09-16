@@ -43,12 +43,6 @@ async function init() {
   
   // Update UI
   updateUI();
-  
-  // Set the main address as the current deposit address
-  if (walletInfo && walletInfo.address) {
-    currentDepositAddress = walletInfo.address;
-    updateDepositAddressDisplay();
-  }
 }
 
 // Load wallet information
@@ -450,6 +444,8 @@ window.addEventListener("DOMContentLoaded", () => {
   
   // Set up send transaction button
   document.querySelector("#send-btn")?.addEventListener("click", sendTransaction);
+  // Set up term deposits
+  document.querySelector("#create-deposit-btn")?.addEventListener("click", () => createDeposit());
   
   // Initialize the app
   init();

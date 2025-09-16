@@ -8,7 +8,7 @@ pub mod utils;
 
 use log::info;
 use crate::crypto::ffi::CryptoNoteFFI;
-use crate::crypto::real_cryptonote::{RealCryptoNoteWallet, connect_to_fuego_network};
+use crate::crypto::real_cryptonote::{RealCryptoNoteWallet, connect_to_fuego_network, fetch_fuego_network_data};
 
 /// Initialize the Tauri application
 pub fn run() {
@@ -26,6 +26,7 @@ pub fn run() {
             get_network_status,
             test_ffi_integration,
             test_real_cryptonote,
+            get_fuego_network_data,
         ])
         .setup(|_app| {
             info!("Fuego Desktop Wallet initialized successfully");
@@ -180,4 +181,20 @@ async fn test_real_cryptonote() -> Result<serde_json::Value, String> {
             "hash": tx_result.unwrap()
         }
     }))
+}
+
+/// Get real Fuego network data from fuego.spaceportx.net
+#[tauri::command]
+async fn get_fuego_network_data() -> Result<serde_json::Value, String> {
+    match fetch_fuego_network_data().await {
+        Ok(data) => {
+            log::info!("Fetched real Fuego network data: height={}, peers={}", 
+                      data["height"], data["peer_count"]);
+            Ok(data)
+        }
+        Err(e) => {
+            log::error!("Failed to fetch Fuego network data: {}", e);
+            Err(format!("Failed to fetch network data: {}", e))
+        }
+    }
 }

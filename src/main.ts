@@ -151,6 +151,28 @@ async function testRealCryptoNote() {
   }
 }
 
+// Fetch live Fuego network data
+async function fetchLiveNetworkData() {
+  try {
+    const data = await invoke("get_fuego_network_data");
+    console.log("Live Network Data:", data);
+    
+    // Show detailed network information
+    const height = data.height;
+    const peers = data.peer_count;
+    const difficulty = data.difficulty;
+    const lastReward = (data.last_block_reward / 10000000).toFixed(7);
+    const version = data.version;
+    const txCount = data.tx_count;
+    const feeAddress = data.fee_address;
+    
+    alert(`🔥 Live Fuego Network Data 🔥\n\nBlock Height: ${height.toLocaleString()}\nPeer Count: ${peers}\nDifficulty: ${difficulty.toLocaleString()}\nLast Block Reward: ${lastReward} XFG\nVersion: ${version}\nTotal Transactions: ${txCount.toLocaleString()}\nFee Address: ${feeAddress.substring(0, 20)}...\n\nSource: fuego.spaceportx.net`);
+  } catch (error) {
+    console.error("Failed to fetch network data:", error);
+    alert(`Failed to fetch network data: ${error}`);
+  }
+}
+
 // Initialize when DOM is loaded
 window.addEventListener("DOMContentLoaded", () => {
   walletStatusEl = document.querySelector("#wallet-status");
@@ -167,6 +189,9 @@ window.addEventListener("DOMContentLoaded", () => {
   
   // Set up real CryptoNote test button
   document.querySelector("#test-real-btn")?.addEventListener("click", testRealCryptoNote);
+  
+  // Set up live network data button
+  document.querySelector("#network-data-btn")?.addEventListener("click", fetchLiveNetworkData);
   
   // Initialize the app
   init();

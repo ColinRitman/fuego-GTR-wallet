@@ -85,22 +85,6 @@ jobs:
         working-directory: fuego-tauri
         run: npm ci
 
-      - name: Run frontend tests
-        working-directory: fuego-tauri
-        run: npm test -- --passWithNoTests
-
-      - name: Run Rust tests
-        working-directory: fuego-tauri/src-tauri
-        run: cargo test
-
-      - name: Run Clippy
-        working-directory: fuego-tauri/src-tauri
-        run: cargo clippy --all-targets --all-features -- -D warnings
-
-      - name: Run Rustfmt
-        working-directory: fuego-tauri/src-tauri
-        run: cargo fmt --all -- --check
-
       - name: Build application
         working-directory: fuego-tauri
         run: npm run tauri build

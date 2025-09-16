@@ -55,7 +55,8 @@ jobs:
       - name: Install system dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew install webkit2gtk openssl
+          # macOS dependencies are handled by Tauri automatically
+          echo "macOS dependencies handled by Tauri"
 
       - name: Install frontend dependencies
         working-directory: fuego-tauri
@@ -189,7 +190,8 @@ jobs:
       - name: Install system dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew install webkit2gtk openssl
+          # macOS dependencies are handled by Tauri automatically
+          echo "macOS dependencies handled by Tauri"
 
       - name: Install frontend dependencies
         working-directory: fuego-tauri

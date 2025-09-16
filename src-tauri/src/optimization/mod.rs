@@ -279,7 +279,7 @@ where
                 entry.last_accessed = Instant::now();
                 entry.access_count += 1;
                 
-                if let Ok(mut stats) = self.stats.lock() {
+                if let Ok(stats) = self.stats.lock() {
                     stats.hits.fetch_add(1, Ordering::Relaxed);
                 }
                 
@@ -287,7 +287,7 @@ where
             }
         }
         
-        if let Ok(mut stats) = self.stats.lock() {
+        if let Ok(stats) = self.stats.lock() {
             stats.misses.fetch_add(1, Ordering::Relaxed);
         }
         
@@ -310,7 +310,7 @@ where
             
             data.insert(key, entry);
             
-            if let Ok(mut stats) = self.stats.lock() {
+            if let Ok(stats) = self.stats.lock() {
                 stats.size.store(data.len(), Ordering::Relaxed);
             }
         }
@@ -337,7 +337,7 @@ where
         if let Ok(mut data) = self.data.lock() {
             data.clear();
             
-            if let Ok(mut stats) = self.stats.lock() {
+            if let Ok(stats) = self.stats.lock() {
                 stats.size.store(0, Ordering::Relaxed);
             }
         }
@@ -345,7 +345,13 @@ where
     
     /// Get cache statistics
     pub fn stats(&self) -> CacheStats {
-        self.stats.lock().unwrap().clone()
+        let stats = self.stats.lock().unwrap();
+        CacheStats {
+            hits: AtomicU64::new(stats.hits.load(Ordering::Relaxed)),
+            misses: AtomicU64::new(stats.misses.load(Ordering::Relaxed)),
+            size: AtomicUsize::new(stats.size.load(Ordering::Relaxed)),
+            max_size: stats.max_size,
+        }
     }
 }
 

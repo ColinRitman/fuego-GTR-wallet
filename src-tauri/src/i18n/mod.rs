@@ -30,7 +30,7 @@ pub struct I18nManager {
 
 impl I18nManager {
     pub fn new() -> Self {
-        let mut manager = Self {
+        let manager = Self {
             current_language: Arc::new(Mutex::new("en".to_string())),
             translations: Arc::new(Mutex::new(HashMap::new())),
             languages: Arc::new(Mutex::new(Vec::new())),

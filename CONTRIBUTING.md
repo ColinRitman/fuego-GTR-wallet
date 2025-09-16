@@ -14,8 +14,8 @@ Thank you for your interest in contributing to FuegoGT Wallet! This document pro
 
 1. **Fork and Clone**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/fuego-tauri-wallet.git
-   cd fuego-tauri-wallet/fuego-tauri
+   git clone https://github.com/YOUR_USERNAME/fuego-GTR-wallet.git
+   cd fuego-GTR-wallet/fuego-tauri
    ```
 
 2. **Install Dependencies**

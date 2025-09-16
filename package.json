@@ -37,12 +37,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/fuego-wallet/fuego-tauri-wallet.git"
+    "url": "https://github.com/fuego-wallet/fuego-GTR-wallet.git"
   },
   "bugs": {
-    "url": "https://github.com/fuego-wallet/fuego-tauri-wallet/issues"
+    "url": "https://github.com/fuego-wallet/fuego-GTR-wallet/issues"
   },
-  "homepage": "https://github.com/fuego-wallet/fuego-tauri-wallet#readme",
+  "homepage": "https://github.com/fuego-wallet/fuego-GTR-wallet#readme",
   "dependencies": {
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2.2.3"

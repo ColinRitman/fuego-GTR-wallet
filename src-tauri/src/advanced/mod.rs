@@ -204,6 +204,7 @@ pub struct AddressInfo {
 }
 
 /// Advanced wallet operations manager
+#[derive(Debug)]
 pub struct AdvancedWalletManager {
     wallet_info: Arc<Mutex<Option<EnhancedWalletInfo>>>,
     transactions: Arc<Mutex<Vec<AdvancedTransactionInfo>>>,
@@ -265,7 +266,9 @@ impl AdvancedWalletManager {
             transactions.push(transaction);
             // Keep only last 1000 transactions
             if transactions.len() > 1000 {
-                transactions.drain(0..transactions.len() - 1000);
+                let keep_count = 1000;
+                let remove_count = transactions.len() - keep_count;
+                transactions.drain(0..remove_count);
             }
         }
     }
@@ -324,7 +327,9 @@ impl AdvancedWalletManager {
             operations.push(operation);
             // Keep only last 100 operations
             if operations.len() > 100 {
-                operations.drain(0..operations.len() - 100);
+                let keep_count = 100;
+                let remove_count = operations.len() - keep_count;
+                operations.drain(0..remove_count);
             }
         }
     }
@@ -379,6 +384,7 @@ impl AdvancedWalletManager {
 }
 
 /// Advanced UI component manager
+#[derive(Debug)]
 pub struct AdvancedUIManager {
     components: Arc<Mutex<HashMap<String, UIComponent>>>,
     themes: Arc<Mutex<Vec<UITheme>>>,
@@ -514,7 +520,9 @@ impl AdvancedUIManager {
             notifications.push(notification);
             // Keep only last 50 notifications
             if notifications.len() > 50 {
-                notifications.drain(0..notifications.len() - 50);
+                let keep_count = 50;
+                let remove_count = notifications.len() - keep_count;
+                notifications.drain(0..remove_count);
             }
         }
     }

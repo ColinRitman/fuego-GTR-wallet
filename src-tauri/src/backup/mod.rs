@@ -62,7 +62,7 @@ impl BackupManager {
         fs::create_dir_all(&backup_dir)
             .map_err(|e| format!("Failed to create backup directory: {}", e))?;
         
-        let mut manager = Self {
+        let manager = Self {
             backups: Arc::new(Mutex::new(Vec::new())),
             backup_dir,
         };

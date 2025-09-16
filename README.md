@@ -1,11 +1,11 @@
 # 🔥 FuegoGT Wallet
 
-[![Build Status](https://github.com/fuego-wallet/fuego-tauri-wallet/workflows/CI%20-%20FuegoGT%20Wallet/badge.svg)](https://github.com/fuego-wallet/fuego-tauri-wallet/actions)
-[![Release](https://img.shields.io/github/v/release/fuego-wallet/fuego-tauri-wallet)](https://github.com/fuego-wallet/fuego-tauri-wallet/releases)
-[![License](https://img.shields.io/github/license/fuego-wallet/fuego-tauri-wallet)](LICENSE)
+[![Build Status](https://github.com/fuego-wallet/fuego-GTR-wallet/workflows/CI%20-%20FuegoGT%20Wallet/badge.svg)](https://github.com/fuego-wallet/fuego-GTR-wallet/actions)
+[![Release](https://img.shields.io/github/v/release/fuego-wallet/fuego-GTR-wallet)](https://github.com/fuego-wallet/fuego-GTR-wallet/releases)
+[![License](https://img.shields.io/github/license/fuego-wallet/fuego-GTR-wallet)](LICENSE)
 [![Security](https://img.shields.io/badge/security-audited-green.svg)](SECURITY.md)
 
-**FuegoGT Wallet** is a modern, secure, and feature-rich desktop cryptocurrency wallet for the Fuego (XFG) blockchain. Built with Tauri, Rust, and modern web technologies, it provides a native desktop experience with advanced security features and comprehensive functionality.
+**FuegoGTR Wallet** is a modern, secure, and feature-rich desktop cryptocurrency wallet for the Fuego (XFG) blockchain. Built with Tauri, Rust, and modern web technologies, it provides a native desktop experience with advanced security features and comprehensive functionality.
 
 ## ✨ Features
 
@@ -24,7 +24,7 @@
 - **Address Management** - Multiple addresses with labels and subaddresses
 - **Mining Integration** - Built-in mining support with pool management
 
-### 🌍 User Experience
+### 🖥️ User Experience
 - **Multi-language Support** - 11 languages with RTL support
 - **Modern UI** - Beautiful, responsive interface with dark/light themes
 - **Real-time Updates** - Live balance, sync progress, and notifications
@@ -52,8 +52,8 @@
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/fuego-wallet/fuego-tauri-wallet.git
-   cd fuego-tauri-wallet/fuego-tauri
+   git clone https://github.com/fuego-wallet/fuego-GTR-wallet.git
+   cd fuego-GTR-wallet/fuego-tauri
    ```
 
 2. **Install dependencies**
@@ -73,7 +73,7 @@
 
 ### Download Pre-built Releases
 
-Visit the [Releases](https://github.com/fuego-wallet/fuego-tauri-wallet/releases) page to download pre-built binaries for your platform.
+Visit the [Releases](https://github.com/fuego-wallet/fuego-GTR-wallet/releases) page to download pre-built binaries for your platform.
 
 ## 🏗️ Architecture
 
@@ -222,9 +222,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- **Documentation**: [Wiki](https://github.com/fuego-wallet/fuego-tauri-wallet/wiki)
-- **Issues**: [GitHub Issues](https://github.com/fuego-wallet/fuego-tauri-wallet/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/fuego-wallet/fuego-tauri-wallet/discussions)
+- **Documentation**: [Wiki](https://github.com/fuego-wallet/fuego-GTR-wallet/wiki)
+- **Issues**: [GitHub Issues](https://github.com/fuego-wallet/fuego-GTR-wallet/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/fuego-wallet/fuego-GTR-wallet/discussions)
 - **Community**: [Fuego Discord](https://discord.gg/fuego)
 
 ## 🙏 Acknowledgments

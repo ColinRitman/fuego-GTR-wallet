@@ -65,8 +65,9 @@ function updateUI() {
   
   // Update balance
   if (balanceEl && walletInfo) {
-    const balance = (walletInfo.balance / 1000000000).toFixed(4);
-    balanceEl.textContent = `${balance} FUEGO`;
+    // XFG uses 7 decimal places (10000000 atomic units = 1 XFG)
+    const balance = (walletInfo.balance / 10000000).toFixed(7);
+    balanceEl.textContent = `${balance} XFG`;
   }
   
   // Update address
@@ -80,7 +81,7 @@ function updateUI() {
       <div class="transaction">
         <div class="tx-info">
           <span class="tx-amount ${tx.amount > 0 ? 'positive' : 'negative'}">
-            ${tx.amount > 0 ? '+' : ''}${(tx.amount / 1000000000).toFixed(4)} FUEGO
+            ${tx.amount > 0 ? '+' : ''}${(tx.amount / 10000000).toFixed(7)} XFG
           </span>
           <span class="tx-address">${tx.address}</span>
         </div>
@@ -126,7 +127,8 @@ async function testFFI() {
     console.log("FFI Test Result:", result);
     
     // Show result in a simple alert for now
-    alert(`FFI Test Successful!\n\nWallet Address: ${result.wallet.address}\nBalance: ${result.wallet.balance}\nTransaction Hash: ${result.transaction.hash}`);
+    const balanceXFG = (result.wallet.balance / 10000000).toFixed(7);
+    alert(`FFI Test Successful!\n\nWallet Address: ${result.wallet.address}\nBalance: ${balanceXFG} XFG\nTransaction Hash: ${result.transaction.hash}`);
   } catch (error) {
     console.error("FFI Test Failed:", error);
     alert(`FFI Test Failed: ${error}`);
@@ -141,7 +143,8 @@ async function testRealCryptoNote() {
     
     // Show result in a detailed alert
     const networkStatus = result.network.status;
-    alert(`Real Fuego Test Successful!\n\nWallet Address: ${result.wallet.address}\nBalance: ${result.wallet.balance}\nNetwork Connected: ${networkStatus.is_connected}\nConnection Type: ${networkStatus.connection_type}\nPeer Count: ${networkStatus.peer_count}\nTransaction Hash: ${result.transaction.hash}`);
+    const balanceXFG = (result.wallet.balance / 10000000).toFixed(7);
+    alert(`Real Fuego Test Successful!\n\nWallet Address: ${result.wallet.address}\nBalance: ${balanceXFG} XFG\nNetwork Connected: ${networkStatus.is_connected}\nConnection Type: ${networkStatus.connection_type}\nPeer Count: ${networkStatus.peer_count}\nTransaction Hash: ${result.transaction.hash}`);
   } catch (error) {
     console.error("Real CryptoNote Test Failed:", error);
     alert(`Real CryptoNote Test Failed: ${error}`);

@@ -72,28 +72,19 @@ pub fn run() {
             get_background_task_status,
             enable_background_task,
             disable_background_task,
-            // Settings commands
-            get_app_settings,
-            update_app_settings,
-            update_app_wallet_settings,
-            update_app_network_settings,
-            update_app_ui_settings,
-            update_app_security_settings,
-            update_app_performance_settings,
-            reset_app_settings_to_defaults,
-            // Backup commands
-            create_wallet_backup,
-            restore_wallet_backup,
-            list_wallet_backups,
-            delete_wallet_backup,
-            export_wallet_backup,
-            // Internationalization commands
-            get_current_app_language,
-            set_app_language,
-            get_available_app_languages,
-            translate_text,
-            translate_text_with_params,
-            is_app_rtl,
+            // Advanced CryptoNote integration commands
+            get_wallet_info_advanced,
+            get_network_info_advanced,
+            refresh_wallet,
+            rescan_blockchain,
+            get_transaction_by_hash,
+            estimate_transaction_fee,
+            create_address,
+            get_block_info,
+            start_mining,
+            stop_mining,
+            get_mining_info,
+            disconnect_wallet,
         ])
         .setup(|_app| {
             info!("Fuego Desktop Wallet initialized successfully");
@@ -785,4 +776,234 @@ pub async fn translate_text_with_params(key: String, params: HashMap<String, Str
 pub async fn is_app_rtl() -> Result<bool, String> {
     let i18n_manager = I18N_MANAGER.get().unwrap();
     i18n_manager.is_rtl()
+}
+
+// ===== PHASE 3.1: ADVANCED CRYPTONOTE INTEGRATION COMMANDS =====
+
+#[tauri::command]
+async fn get_wallet_info_advanced() -> Result<serde_json::Value, String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    
+    // Open wallet and connect to network
+    if let Err(e) = wallet.open_wallet("fuego_wallet.wallet", "password") {
+        return Err(format!("Failed to open wallet: {}", e));
+    }
+    
+    if let Err(e) = wallet.connect_to_network("http://fuego.spaceportx.net:18180") {
+        return Err(format!("Failed to connect to network: {}", e));
+    }
+    
+    match wallet.get_wallet_info() {
+        Ok(info) => Ok(serde_json::to_value(info).unwrap_or_default()),
+        Err(e) => Err(format!("Failed to get wallet info: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn get_network_info_advanced() -> Result<serde_json::Value, String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    
+    // Open wallet and connect to network
+    if let Err(e) = wallet.open_wallet("fuego_wallet.wallet", "password") {
+        return Err(format!("Failed to open wallet: {}", e));
+    }
+    
+    if let Err(e) = wallet.connect_to_network("http://fuego.spaceportx.net:18180") {
+        return Err(format!("Failed to connect to network: {}", e));
+    }
+    
+    match wallet.get_network_info() {
+        Ok(info) => Ok(serde_json::to_value(info).unwrap_or_default()),
+        Err(e) => Err(format!("Failed to get network info: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn refresh_wallet() -> Result<String, String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    
+    // Open wallet and connect to network
+    if let Err(e) = wallet.open_wallet("fuego_wallet.wallet", "password") {
+        return Err(format!("Failed to open wallet: {}", e));
+    }
+    
+    if let Err(e) = wallet.connect_to_network("http://fuego.spaceportx.net:18180") {
+        return Err(format!("Failed to connect to network: {}", e));
+    }
+    
+    match wallet.refresh() {
+        Ok(_) => Ok("Wallet refreshed successfully".to_string()),
+        Err(e) => Err(format!("Failed to refresh wallet: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn rescan_blockchain(start_height: u64) -> Result<String, String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    
+    // Open wallet and connect to network
+    if let Err(e) = wallet.open_wallet("fuego_wallet.wallet", "password") {
+        return Err(format!("Failed to open wallet: {}", e));
+    }
+    
+    if let Err(e) = wallet.connect_to_network("http://fuego.spaceportx.net:18180") {
+        return Err(format!("Failed to connect to network: {}", e));
+    }
+    
+    match wallet.rescan_blockchain(start_height) {
+        Ok(_) => Ok(format!("Blockchain rescan started from height {}", start_height)),
+        Err(e) => Err(format!("Failed to rescan blockchain: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn get_transaction_by_hash(tx_hash: String) -> Result<serde_json::Value, String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    
+    // Open wallet and connect to network
+    if let Err(e) = wallet.open_wallet("fuego_wallet.wallet", "password") {
+        return Err(format!("Failed to open wallet: {}", e));
+    }
+    
+    if let Err(e) = wallet.connect_to_network("http://fuego.spaceportx.net:18180") {
+        return Err(format!("Failed to connect to network: {}", e));
+    }
+    
+    match wallet.get_transaction_by_hash(&tx_hash) {
+        Ok(tx) => Ok(serde_json::to_value(tx).unwrap_or_default()),
+        Err(e) => Err(format!("Failed to get transaction: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn estimate_transaction_fee(address: String, amount: u64, mixin: u64) -> Result<u64, String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    
+    // Open wallet and connect to network
+    if let Err(e) = wallet.open_wallet("fuego_wallet.wallet", "password") {
+        return Err(format!("Failed to open wallet: {}", e));
+    }
+    
+    if let Err(e) = wallet.connect_to_network("http://fuego.spaceportx.net:18180") {
+        return Err(format!("Failed to connect to network: {}", e));
+    }
+    
+    match wallet.estimate_transaction_fee(&address, amount, mixin) {
+        Ok(fee) => Ok(fee),
+        Err(e) => Err(format!("Failed to estimate fee: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn create_address(label: Option<String>) -> Result<String, String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    
+    // Open wallet and connect to network
+    if let Err(e) = wallet.open_wallet("fuego_wallet.wallet", "password") {
+        return Err(format!("Failed to open wallet: {}", e));
+    }
+    
+    if let Err(e) = wallet.connect_to_network("http://fuego.spaceportx.net:18180") {
+        return Err(format!("Failed to connect to network: {}", e));
+    }
+    
+    match wallet.create_address(label.as_deref()) {
+        Ok(address) => Ok(address),
+        Err(e) => Err(format!("Failed to create address: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn get_block_info(height: u64) -> Result<serde_json::Value, String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    
+    // Open wallet and connect to network
+    if let Err(e) = wallet.open_wallet("fuego_wallet.wallet", "password") {
+        return Err(format!("Failed to open wallet: {}", e));
+    }
+    
+    if let Err(e) = wallet.connect_to_network("http://fuego.spaceportx.net:18180") {
+        return Err(format!("Failed to connect to network: {}", e));
+    }
+    
+    match wallet.get_block_info(height) {
+        Ok(block) => Ok(serde_json::to_value(block).unwrap_or_default()),
+        Err(e) => Err(format!("Failed to get block info: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn start_mining(threads: u32, background: bool) -> Result<String, String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    
+    // Open wallet and connect to network
+    if let Err(e) = wallet.open_wallet("fuego_wallet.wallet", "password") {
+        return Err(format!("Failed to open wallet: {}", e));
+    }
+    
+    if let Err(e) = wallet.connect_to_network("http://fuego.spaceportx.net:18180") {
+        return Err(format!("Failed to connect to network: {}", e));
+    }
+    
+    match wallet.start_mining(threads, background) {
+        Ok(_) => Ok(format!("Mining started with {} threads", threads)),
+        Err(e) => Err(format!("Failed to start mining: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn stop_mining() -> Result<String, String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    
+    // Open wallet and connect to network
+    if let Err(e) = wallet.open_wallet("fuego_wallet.wallet", "password") {
+        return Err(format!("Failed to open wallet: {}", e));
+    }
+    
+    if let Err(e) = wallet.connect_to_network("http://fuego.spaceportx.net:18180") {
+        return Err(format!("Failed to connect to network: {}", e));
+    }
+    
+    match wallet.stop_mining() {
+        Ok(_) => Ok("Mining stopped successfully".to_string()),
+        Err(e) => Err(format!("Failed to stop mining: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn get_mining_info() -> Result<serde_json::Value, String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    
+    // Open wallet and connect to network
+    if let Err(e) = wallet.open_wallet("fuego_wallet.wallet", "password") {
+        return Err(format!("Failed to open wallet: {}", e));
+    }
+    
+    if let Err(e) = wallet.connect_to_network("http://fuego.spaceportx.net:18180") {
+        return Err(format!("Failed to connect to network: {}", e));
+    }
+    
+    match wallet.get_mining_info() {
+        Ok(info) => Ok(serde_json::to_value(info).unwrap_or_default()),
+        Err(e) => Err(format!("Failed to get mining info: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn disconnect_wallet() -> Result<String, String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    
+    // Open wallet and connect to network
+    if let Err(e) = wallet.open_wallet("fuego_wallet.wallet", "password") {
+        return Err(format!("Failed to open wallet: {}", e));
+    }
+    
+    if let Err(e) = wallet.connect_to_network("http://fuego.spaceportx.net:18180") {
+        return Err(format!("Failed to connect to network: {}", e));
+    }
+    
+    match wallet.disconnect() {
+        Ok(_) => Ok("Disconnected from network successfully".to_string()),
+        Err(e) => Err(format!("Failed to disconnect: {}", e)),
+    }
 }

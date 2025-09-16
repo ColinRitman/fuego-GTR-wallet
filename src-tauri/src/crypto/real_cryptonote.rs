@@ -10,8 +10,8 @@ use std::os::raw::{c_char, c_void};
 use std::ptr;
 use crate::utils::error::{WalletError, WalletResult};
 
-// Deposit data structure matching CryptoNote implementation
-#[derive(Debug, Clone)]
+// Advanced data structures for CryptoNote integration
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DepositInfo {
     pub id: String,
     pub amount: u64,
@@ -28,6 +28,78 @@ pub struct DepositInfo {
     pub spending_height: Option<u64>,
     pub spending_time: Option<String>,
     pub deposit_type: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct TransactionInfo {
+    pub id: String,
+    pub hash: String,
+    pub amount: i64, // Positive for received, negative for sent
+    pub fee: u64,
+    pub height: u64,
+    pub timestamp: u64,
+    pub confirmations: u32,
+    pub is_confirmed: bool,
+    pub is_pending: bool,
+    pub payment_id: Option<String>,
+    pub destination_addresses: Vec<String>,
+    pub source_addresses: Vec<String>,
+    pub unlock_time: Option<u64>,
+    pub extra: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct WalletInfo {
+    pub address: String,
+    pub balance: u64,
+    pub unlocked_balance: u64,
+    pub locked_balance: u64,
+    pub total_received: u64,
+    pub total_sent: u64,
+    pub transaction_count: u32,
+    pub is_synced: bool,
+    pub sync_height: u64,
+    pub network_height: u64,
+    pub daemon_height: u64,
+    pub is_connected: bool,
+    pub peer_count: u32,
+    pub last_block_time: Option<u64>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct NetworkInfo {
+    pub is_connected: bool,
+    pub peer_count: u32,
+    pub sync_height: u64,
+    pub network_height: u64,
+    pub is_syncing: bool,
+    pub connection_type: String,
+    pub last_sync_time: Option<u64>,
+    pub sync_speed: f64, // blocks per second
+    pub estimated_sync_time: Option<u64>, // seconds remaining
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct BlockInfo {
+    pub height: u64,
+    pub hash: String,
+    pub timestamp: u64,
+    pub difficulty: u64,
+    pub reward: u64,
+    pub size: u32,
+    pub transaction_count: u32,
+    pub is_main_chain: bool,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct MiningInfo {
+    pub is_mining: bool,
+    pub hashrate: f64,
+    pub difficulty: u64,
+    pub block_reward: u64,
+    pub pool_address: Option<String>,
+    pub worker_name: Option<String>,
+    pub threads: u32,
 }
 
 // FFI bindings for real CryptoNote operations
@@ -82,11 +154,54 @@ extern "C" {
     ) -> bool;
     
     fn fuego_wallet_get_network_status(wallet: *mut c_void) -> *mut c_void;
+    fn fuego_wallet_get_network_info(wallet: *mut c_void) -> *mut c_void;
+    fn fuego_wallet_disconnect_node(wallet: *mut c_void) -> bool;
+    
+    // Advanced wallet operations
+    fn fuego_wallet_get_wallet_info(wallet: *mut c_void) -> *mut c_void;
+    fn fuego_wallet_refresh(wallet: *mut c_void) -> bool;
+    fn fuego_wallet_rescan_blockchain(wallet: *mut c_void, start_height: u64) -> bool;
+    fn fuego_wallet_set_refresh_from_block_height(wallet: *mut c_void, height: u64) -> bool;
+    
+    // Transaction management
+    fn fuego_wallet_get_transaction_by_hash(wallet: *mut c_void, tx_hash: *const c_char) -> *mut c_void;
+    fn fuego_wallet_get_transaction_by_id(wallet: *mut c_void, tx_id: *const c_char) -> *mut c_void;
+    fn fuego_wallet_cancel_transaction(wallet: *mut c_void, tx_id: *const c_char) -> bool;
+    fn fuego_wallet_estimate_transaction_fee(
+        wallet: *mut c_void,
+        address: *const c_char,
+        amount: u64,
+        mixin: u64,
+    ) -> u64;
+    
+    // Address management
+    fn fuego_wallet_create_address(wallet: *mut c_void, label: *const c_char) -> *mut c_char;
+    fn fuego_wallet_get_addresses(wallet: *mut c_void) -> *mut c_void;
+    fn fuego_wallet_delete_address(wallet: *mut c_void, address: *const c_char) -> bool;
+    fn fuego_wallet_set_address_label(wallet: *mut c_void, address: *const c_char, label: *const c_char) -> bool;
+    
+    // Blockchain operations
+    fn fuego_wallet_get_block_info(wallet: *mut c_void, height: u64) -> *mut c_void;
+    fn fuego_wallet_get_block_by_hash(wallet: *mut c_void, block_hash: *const c_char) -> *mut c_void;
+    fn fuego_wallet_get_current_block_height(wallet: *mut c_void) -> u64;
+    fn fuego_wallet_get_block_timestamp(wallet: *mut c_void, height: u64) -> u64;
+    
+    // Mining operations
+    fn fuego_wallet_start_mining(wallet: *mut c_void, threads: u32, background: bool) -> bool;
+    fn fuego_wallet_stop_mining(wallet: *mut c_void) -> bool;
+    fn fuego_wallet_get_mining_info(wallet: *mut c_void) -> *mut c_void;
+    fn fuego_wallet_set_mining_pool(wallet: *mut c_void, pool_address: *const c_char, worker_name: *const c_char) -> bool;
     
     // Utility functions
     fn fuego_wallet_free_string(s: *mut c_char);
     fn fuego_wallet_free_transactions(txs: *mut c_void);
     fn fuego_wallet_free_network_status(status: *mut c_void);
+    fn fuego_wallet_free_wallet_info(info: *mut c_void);
+    fn fuego_wallet_free_network_info(info: *mut c_void);
+    fn fuego_wallet_free_transaction_info(tx: *mut c_void);
+    fn fuego_wallet_free_block_info(block: *mut c_void);
+    fn fuego_wallet_free_mining_info(info: *mut c_void);
+    fn fuego_wallet_free_addresses(addresses: *mut c_void);
 }
 
 /// Real CryptoNote wallet implementation
@@ -304,6 +419,22 @@ impl RealCryptoNoteWallet {
         }
     }
     
+    /// Connect to Fuego network (convenience method)
+    pub fn connect_to_network(&mut self, node_url: &str) -> WalletResult<()> {
+        // Parse URL to extract address and port
+        let url = node_url.replace("http://", "").replace("https://", "");
+        let parts: Vec<&str> = url.split(':').collect();
+        
+        let address = parts[0];
+        let port = if parts.len() > 1 {
+            parts[1].parse::<u16>().unwrap_or(18180)
+        } else {
+            18180
+        };
+        
+        self.connect_to_node(address, port)
+    }
+    
     /// Get network status from real CryptoNote implementation
     pub fn get_network_status(&self) -> WalletResult<serde_json::Value> {
         if self.wallet_ptr.is_null() {
@@ -352,6 +483,337 @@ impl RealCryptoNoteWallet {
         // For now, return empty list - real implementation would parse C++ deposit data
         // TODO: Implement real deposit parsing from CryptoNote C++ data structures
         Ok(vec![])
+    }
+    
+    // ===== PHASE 3.1: ADVANCED CRYPTONOTE INTEGRATION =====
+    
+    /// Get comprehensive wallet information
+    pub fn get_wallet_info(&self) -> WalletResult<WalletInfo> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+        
+        let info_ptr = unsafe {
+            fuego_wallet_get_wallet_info(self.wallet_ptr)
+        };
+        
+        if info_ptr.is_null() {
+            return Err(WalletError::Generic(
+                "Failed to get wallet information".to_string(),
+            ));
+        }
+        
+        // TODO: Parse real wallet info from C++ data structure
+        // For now, return mock data with real balance
+        let balance = unsafe { fuego_wallet_get_balance(self.wallet_ptr) };
+        let unlocked_balance = unsafe { fuego_wallet_get_unlocked_balance(self.wallet_ptr) };
+        
+        unsafe {
+            fuego_wallet_free_wallet_info(info_ptr);
+        }
+        
+        Ok(WalletInfo {
+            address: "FuegoWallet_Address_Placeholder".to_string(),
+            balance,
+            unlocked_balance,
+            locked_balance: balance - unlocked_balance,
+            total_received: balance,
+            total_sent: 0,
+            transaction_count: 0,
+            is_synced: true,
+            sync_height: 0,
+            network_height: 0,
+            daemon_height: 0,
+            is_connected: self.is_connected,
+            peer_count: 0,
+            last_block_time: None,
+        })
+    }
+    
+    /// Get detailed network information
+    pub fn get_network_info(&self) -> WalletResult<NetworkInfo> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+        
+        let info_ptr = unsafe {
+            fuego_wallet_get_network_info(self.wallet_ptr)
+        };
+        
+        if info_ptr.is_null() {
+            return Err(WalletError::Generic(
+                "Failed to get network information".to_string(),
+            ));
+        }
+        
+        // TODO: Parse real network info from C++ data structure
+        unsafe {
+            fuego_wallet_free_network_info(info_ptr);
+        }
+        
+        Ok(NetworkInfo {
+            is_connected: self.is_connected,
+            peer_count: 0,
+            sync_height: 0,
+            network_height: 0,
+            is_syncing: false,
+            connection_type: "daemon".to_string(),
+            last_sync_time: None,
+            sync_speed: 0.0,
+            estimated_sync_time: None,
+        })
+    }
+    
+    /// Refresh wallet data from blockchain
+    pub fn refresh(&mut self) -> WalletResult<()> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+        
+        let success = unsafe {
+            fuego_wallet_refresh(self.wallet_ptr)
+        };
+        
+        if !success {
+            return Err(WalletError::Generic(
+                "Failed to refresh wallet".to_string(),
+            ));
+        }
+        
+        log::info!("Wallet refreshed successfully");
+        Ok(())
+    }
+    
+    /// Rescan blockchain from specific height
+    pub fn rescan_blockchain(&mut self, start_height: u64) -> WalletResult<()> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+        
+        let success = unsafe {
+            fuego_wallet_rescan_blockchain(self.wallet_ptr, start_height)
+        };
+        
+        if !success {
+            return Err(WalletError::Generic(
+                "Failed to rescan blockchain".to_string(),
+            ));
+        }
+        
+        log::info!("Blockchain rescan started from height {}", start_height);
+        Ok(())
+    }
+    
+    /// Get transaction by hash
+    pub fn get_transaction_by_hash(&self, tx_hash: &str) -> WalletResult<TransactionInfo> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+        
+        let tx_hash_c = CString::new(tx_hash)?;
+        let tx_ptr = unsafe {
+            fuego_wallet_get_transaction_by_hash(self.wallet_ptr, tx_hash_c.as_ptr())
+        };
+        
+        if tx_ptr.is_null() {
+            return Err(WalletError::TransactionFailed(
+                "Transaction not found".to_string(),
+            ));
+        }
+        
+        // TODO: Parse real transaction info from C++ data structure
+        unsafe {
+            fuego_wallet_free_transaction_info(tx_ptr);
+        }
+        
+        Ok(TransactionInfo {
+            id: tx_hash.to_string(),
+            hash: tx_hash.to_string(),
+            amount: 0,
+            fee: 0,
+            height: 0,
+            timestamp: 0,
+            confirmations: 0,
+            is_confirmed: false,
+            is_pending: true,
+            payment_id: None,
+            destination_addresses: vec![],
+            source_addresses: vec![],
+            unlock_time: None,
+            extra: None,
+        })
+    }
+    
+    /// Estimate transaction fee
+    pub fn estimate_transaction_fee(&self, address: &str, amount: u64, mixin: u64) -> WalletResult<u64> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+        
+        let address_c = CString::new(address)?;
+        let fee = unsafe {
+            fuego_wallet_estimate_transaction_fee(self.wallet_ptr, address_c.as_ptr(), amount, mixin)
+        };
+        
+        Ok(fee)
+    }
+    
+    /// Create new address with label
+    pub fn create_address(&self, label: Option<&str>) -> WalletResult<String> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+        
+        let label_c = match label {
+            Some(l) => CString::new(l)?,
+            None => CString::new("")?,
+        };
+        
+        let address_ptr = unsafe {
+            fuego_wallet_create_address(self.wallet_ptr, label_c.as_ptr())
+        };
+        
+        if address_ptr.is_null() {
+            return Err(WalletError::Generic(
+                "Failed to create address".to_string(),
+            ));
+        }
+        
+        let address = unsafe {
+            CStr::from_ptr(address_ptr).to_string_lossy().to_string()
+        };
+        
+        unsafe {
+            fuego_wallet_free_string(address_ptr);
+        }
+        
+        Ok(address)
+    }
+    
+    /// Get block information by height
+    pub fn get_block_info(&self, height: u64) -> WalletResult<BlockInfo> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+        
+        let block_ptr = unsafe {
+            fuego_wallet_get_block_info(self.wallet_ptr, height)
+        };
+        
+        if block_ptr.is_null() {
+            return Err(WalletError::Generic(
+                "Block not found".to_string(),
+            ));
+        }
+        
+        // TODO: Parse real block info from C++ data structure
+        unsafe {
+            fuego_wallet_free_block_info(block_ptr);
+        }
+        
+        Ok(BlockInfo {
+            height,
+            hash: "block_hash_placeholder".to_string(),
+            timestamp: 0,
+            difficulty: 0,
+            reward: 0,
+            size: 0,
+            transaction_count: 0,
+            is_main_chain: true,
+        })
+    }
+    
+    /// Start mining
+    pub fn start_mining(&mut self, threads: u32, background: bool) -> WalletResult<()> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+        
+        let success = unsafe {
+            fuego_wallet_start_mining(self.wallet_ptr, threads, background)
+        };
+        
+        if !success {
+            return Err(WalletError::Generic(
+                "Failed to start mining".to_string(),
+            ));
+        }
+        
+        log::info!("Mining started with {} threads", threads);
+        Ok(())
+    }
+    
+    /// Stop mining
+    pub fn stop_mining(&mut self) -> WalletResult<()> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+        
+        let success = unsafe {
+            fuego_wallet_stop_mining(self.wallet_ptr)
+        };
+        
+        if !success {
+            return Err(WalletError::Generic(
+                "Failed to stop mining".to_string(),
+            ));
+        }
+        
+        log::info!("Mining stopped");
+        Ok(())
+    }
+    
+    /// Get mining information
+    pub fn get_mining_info(&self) -> WalletResult<MiningInfo> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+        
+        let info_ptr = unsafe {
+            fuego_wallet_get_mining_info(self.wallet_ptr)
+        };
+        
+        if info_ptr.is_null() {
+            return Err(WalletError::Generic(
+                "Failed to get mining information".to_string(),
+            ));
+        }
+        
+        // TODO: Parse real mining info from C++ data structure
+        unsafe {
+            fuego_wallet_free_mining_info(info_ptr);
+        }
+        
+        Ok(MiningInfo {
+            is_mining: false,
+            hashrate: 0.0,
+            difficulty: 0,
+            block_reward: 0,
+            pool_address: None,
+            worker_name: None,
+            threads: 0,
+        })
+    }
+    
+    /// Disconnect from network
+    pub fn disconnect(&mut self) -> WalletResult<()> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+        
+        let success = unsafe {
+            fuego_wallet_disconnect_node(self.wallet_ptr)
+        };
+        
+        if !success {
+            return Err(WalletError::Generic(
+                "Failed to disconnect from network".to_string(),
+            ));
+        }
+        
+        self.is_connected = false;
+        log::info!("Disconnected from network");
+        Ok(())
     }
     
     /// Create a new term deposit

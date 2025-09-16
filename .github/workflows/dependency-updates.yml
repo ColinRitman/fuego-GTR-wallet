@@ -1,0 +1,77 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    # Run every Monday at 9:00 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  update-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: fuego-tauri/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Update npm dependencies
+        working-directory: fuego-tauri
+        run: |
+          npm update
+          npm audit fix --audit-level=moderate
+
+      - name: Update Rust dependencies
+        working-directory: fuego-tauri/src-tauri
+        run: |
+          cargo update
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update dependencies'
+          title: 'chore: update dependencies'
+          body: |
+            ## Dependency Updates
+            
+            This PR updates the following dependencies:
+            
+            ### Frontend (npm)
+            - Updated npm packages in `fuego-tauri/package.json`
+            - Applied security fixes via `npm audit fix`
+            
+            ### Backend (Rust)
+            - Updated Rust dependencies in `fuego-tauri/src-tauri/Cargo.toml`
+            
+            ### Testing
+            Please test the application thoroughly after merging this PR.
+            
+            ### Security
+            All security vulnerabilities have been addressed where possible.
+          branch: dependency-updates
+          delete-branch: true
+          labels: |
+            dependencies
+            automated
+            maintenance

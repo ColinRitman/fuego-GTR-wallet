@@ -5,6 +5,15 @@ let walletInfo: any = null;
 let transactions: any[] = [];
 let networkStatus: any = null;
 
+// Advanced features state
+let enhancedWalletInfo: any = null;
+let advancedTransactions: any[] = [];
+let performanceMetrics: any = null;
+let appSettings: any = null;
+let currentLanguage = 'en';
+let availableLanguages: any[] = [];
+let notifications: any[] = [];
+
 // DOM elements
 let walletStatusEl: HTMLElement | null;
 let balanceEl: HTMLElement | null;
@@ -22,6 +31,14 @@ async function init() {
   await loadNetworkStatus();
   await loadDepositAddresses();
   await loadDepositTransactions();
+  
+  // Load advanced features
+  await loadEnhancedWalletInfo();
+  await loadAdvancedTransactions();
+  await loadPerformanceMetrics();
+  await loadAppSettings();
+  await loadAvailableLanguages();
+  await loadNotifications();
   
   // Update UI
   updateUI();
@@ -60,6 +77,61 @@ async function loadNetworkStatus() {
     console.log("Network status loaded:", networkStatus);
   } catch (error) {
     console.error("Failed to load network status:", error);
+  }
+}
+
+// Advanced Features Loading Functions
+async function loadEnhancedWalletInfo() {
+  try {
+    enhancedWalletInfo = await invoke('get_enhanced_wallet_info');
+    console.log('Enhanced wallet info loaded:', enhancedWalletInfo);
+  } catch (error) {
+    console.error('Failed to load enhanced wallet info:', error);
+  }
+}
+
+async function loadAdvancedTransactions() {
+  try {
+    advancedTransactions = await invoke('get_advanced_transactions');
+    console.log('Advanced transactions loaded:', advancedTransactions);
+  } catch (error) {
+    console.error('Failed to load advanced transactions:', error);
+  }
+}
+
+async function loadPerformanceMetrics() {
+  try {
+    performanceMetrics = await invoke('get_performance_metrics');
+    console.log('Performance metrics loaded:', performanceMetrics);
+  } catch (error) {
+    console.error('Failed to load performance metrics:', error);
+  }
+}
+
+async function loadAppSettings() {
+  try {
+    appSettings = await invoke('get_app_settings');
+    console.log('App settings loaded:', appSettings);
+  } catch (error) {
+    console.error('Failed to load app settings:', error);
+  }
+}
+
+async function loadAvailableLanguages() {
+  try {
+    availableLanguages = await invoke('get_available_app_languages');
+    console.log('Available languages loaded:', availableLanguages);
+  } catch (error) {
+    console.error('Failed to load available languages:', error);
+  }
+}
+
+async function loadNotifications() {
+  try {
+    notifications = await invoke('get_notifications');
+    console.log('Notifications loaded:', notifications);
+  } catch (error) {
+    console.error('Failed to load notifications:', error);
   }
 }
 
@@ -121,6 +193,9 @@ function updateUI() {
   
   // Update sync progress display
   updateSyncDisplay(networkStatus);
+  
+  // Update advanced features
+  updateAdvancedUI();
 }
 
 // Refresh data

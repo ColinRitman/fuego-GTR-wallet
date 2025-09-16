@@ -1,160 +1,247 @@
-# Fuego Desktop Wallet (Tauri)
+# 🔥 FuegoGT Wallet
 
-🔥 **Fuego Desktop Wallet** - A modern, secure, and lightweight desktop cryptocurrency wallet built with Tauri.
+[![Build Status](https://github.com/fuego-wallet/fuego-tauri-wallet/workflows/CI%20-%20FuegoGT%20Wallet/badge.svg)](https://github.com/fuego-wallet/fuego-tauri-wallet/actions)
+[![Release](https://img.shields.io/github/v/release/fuego-wallet/fuego-tauri-wallet)](https://github.com/fuego-wallet/fuego-tauri-wallet/releases)
+[![License](https://img.shields.io/github/license/fuego-wallet/fuego-tauri-wallet)](LICENSE)
+[![Security](https://img.shields.io/badge/security-audited-green.svg)](SECURITY.md)
 
-## Overview
+**FuegoGT Wallet** is a modern, secure, and feature-rich desktop cryptocurrency wallet for the Fuego (XFG) blockchain. Built with Tauri, Rust, and modern web technologies, it provides a native desktop experience with advanced security features and comprehensive functionality.
 
-This is a complete rewrite of the Fuego Desktop Wallet using modern technologies:
-- **Backend**: Rust with Tauri framework
-- **Frontend**: TypeScript/HTML/CSS
-- **Architecture**: Secure, cross-platform desktop application
+## ✨ Features
 
-## Features
+### 🔒 Security & Privacy
+- **Encrypted Storage** - All wallet data encrypted with AES-256
+- **Session Management** - Secure authentication and session handling
+- **Password Validation** - Strong password requirements and validation
+- **Secure Backup** - Encrypted ZIP backups with multiple types
+- **Audit Trail** - Complete operation history and logging
 
-- 🔒 **Secure**: Built with Rust for memory safety and security
-- 🚀 **Fast**: Native performance with web-based UI
-- 📦 **Lightweight**: ~10MB bundle size (vs ~100MB+ Qt version)
-- 🌐 **Cross-platform**: Windows, macOS, and Linux support
-- 💰 **Full Wallet Functionality**: Send, receive, transactions, messaging
-- 🔄 **Real-time Sync**: Live blockchain synchronization
-- 🎨 **Modern UI**: Clean, responsive interface
+### 💰 Wallet Functionality
+- **XFG Support** - Full support for Fuego cryptocurrency
+- **Real-time Sync** - Live blockchain synchronization with progress tracking
+- **Transaction Management** - Send, receive, and track transactions
+- **Term Deposits** - Lock XFG for interest with flexible terms
+- **Address Management** - Multiple addresses with labels and subaddresses
+- **Mining Integration** - Built-in mining support with pool management
 
-## Development Status
+### 🌍 User Experience
+- **Multi-language Support** - 11 languages with RTL support
+- **Modern UI** - Beautiful, responsive interface with dark/light themes
+- **Real-time Updates** - Live balance, sync progress, and notifications
+- **Performance Optimized** - Resource monitoring, caching, and threading
+- **Cross-platform** - Native apps for Windows, macOS, and Linux
 
-🚧 **Phase 1**: Foundation & Core Integration (In Progress)
-- [x] Tauri project setup
-- [x] Basic Rust backend structure
-- [x] Mock wallet operations
-- [x] Basic frontend interface
-- [x] GitHub repository setup
-- [ ] CryptoNote C++ integration via FFI
-- [ ] Real wallet operations
+### ⚡ Advanced Features
+- **Blockchain Explorer** - Multiple explorer integrations
+- **Performance Monitoring** - CPU, memory, and network metrics
+- **Background Tasks** - Automated operations and maintenance
+- **Settings Management** - Comprehensive configuration options
+- **Backup & Recovery** - Multiple backup types and restoration
 
-## Technology Stack
-
-### Backend (Rust)
-- **Tauri**: Desktop app framework
-- **Serde**: Serialization
-- **Tokio**: Async runtime
-- **CryptoNote**: Blockchain integration (via FFI)
-
-### Frontend (Web)
-- **TypeScript**: Type-safe JavaScript
-- **HTML5/CSS3**: Modern web standards
-- **Vite**: Build tool and dev server
-
-## Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
-
-- Rust (latest stable)
-- Node.js (v16 or later)
-- npm or yarn
+- **Node.js** 18+ and npm
+- **Rust** 1.70+ with Cargo
+- **System Dependencies**:
+  - **Linux**: `libwebkit2gtk-4.0-dev libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev`
+  - **macOS**: `webkit2gtk openssl` (via Homebrew)
+  - **Windows**: Automatically handled by Tauri
 
 ### Installation
 
-1. Clone the repository:
-```bash
-git clone https://github.com/colinritman/fuego-wallet-tauri.git
-cd fuego-wallet-tauri
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/fuego-wallet/fuego-tauri-wallet.git
+   cd fuego-tauri-wallet/fuego-tauri
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Run in development mode**
+   ```bash
+   npm run tauri dev
+   ```
+
+4. **Build for production**
+   ```bash
+   npm run tauri build
+   ```
+
+### Download Pre-built Releases
+
+Visit the [Releases](https://github.com/fuego-wallet/fuego-tauri-wallet/releases) page to download pre-built binaries for your platform.
+
+## 🏗️ Architecture
+
+### Technology Stack
+- **Frontend**: HTML5, CSS3, TypeScript, Modern JavaScript
+- **Backend**: Rust with Tauri framework
+- **CryptoNote Integration**: C++ FFI bindings
+- **UI Framework**: Custom CSS with modern design patterns
+- **Build System**: Tauri CLI with Rust Cargo
+
+### Project Structure
 ```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Run in development mode:
-```bash
-npm run tauri dev
-```
-
-### Building
-
-Build for production:
-```bash
-npm run tauri build
-```
-
-## Project Structure
-
-```
-fuego-wallet-tauri/
-├── src/                    # Frontend source
+fuego-tauri/
+├── src/                    # Frontend source code
 │   ├── main.ts            # Main application logic
 │   └── styles.css         # Application styles
 ├── src-tauri/             # Rust backend
 │   ├── src/
-│   │   ├── lib.rs         # Main library entry
-│   │   ├── main.rs        # Application entry point
-│   │   └── commands/      # Tauri commands
+│   │   ├── lib.rs         # Main Rust entry point
+│   │   ├── crypto/        # CryptoNote integration
+│   │   ├── security/      # Security features
+│   │   ├── performance/   # Performance optimization
+│   │   ├── settings/      # Settings management
+│   │   ├── backup/        # Backup & recovery
+│   │   ├── i18n/          # Internationalization
+│   │   ├── optimization/  # Advanced optimization
+│   │   └── advanced/      # Advanced features
 │   ├── Cargo.toml         # Rust dependencies
-│   └── tauri.conf.json    # Tauri configuration
-└── package.json           # Node.js dependencies
+│   └── fuego_wallet_real.cpp  # C++ CryptoNote FFI
+├── package.json           # Node.js dependencies
+└── tauri.conf.json       # Tauri configuration
 ```
 
-## Migration from Qt
+## 🔧 Development
 
-This project represents a complete migration from the Qt-based Fuego Wallet to a modern Tauri-based architecture. Key improvements:
+### Setting up Development Environment
 
-- **Bundle Size**: Reduced from ~100MB+ to ~10MB
-- **Security**: Rust backend provides memory safety
-- **Performance**: Native performance with web UI flexibility
-- **Maintenance**: Modern tooling and easier maintenance
-- **Cross-platform**: Better platform integration
+1. **Install Rust**
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   ```
 
-## Contributing
+2. **Install Node.js**
+   ```bash
+   # Using nvm (recommended)
+   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+   nvm install 18
+   nvm use 18
+   ```
 
+3. **Install Tauri CLI**
+   ```bash
+   cargo install tauri-cli
+   ```
+
+### Running Tests
+
+```bash
+# Frontend tests
+npm test
+
+# Rust tests
+cargo test
+
+# Integration tests
+npm run test:integration
+```
+
+### Code Quality
+
+```bash
+# Linting
+npm run lint
+cargo clippy
+
+# Formatting
+npm run format
+cargo fmt
+
+# Security audit
+npm audit
+cargo audit
+```
+
+## 📦 Building & Distribution
+
+### Local Build
+```bash
+npm run tauri build
+```
+
+### Cross-platform Build
+The GitHub Actions workflows automatically build for all platforms:
+- **Linux**: AppImage
+- **Windows**: NSIS installer (.exe)
+- **macOS**: DMG package
+
+### Release Process
+1. Create a git tag: `git tag v1.0.0`
+2. Push the tag: `git push origin v1.0.0`
+3. GitHub Actions will automatically build and release
+
+## 🔐 Security
+
+### Security Features
+- **Encrypted Storage**: All sensitive data encrypted at rest
+- **Secure Communication**: HTTPS/TLS for all network operations
+- **Input Validation**: Comprehensive input sanitization
+- **Session Security**: Secure session management with timeouts
+- **Audit Logging**: Complete operation audit trail
+
+### Reporting Security Issues
+Please report security vulnerabilities privately to [security@fuego.network](mailto:security@fuego.network). See [SECURITY.md](SECURITY.md) for more details.
+
+## 🌐 Internationalization
+
+FuegoGT Wallet supports 11 languages:
+- English (en)
+- Spanish (es)
+- French (fr)
+- German (de)
+- Italian (it)
+- Portuguese (pt)
+- Russian (ru)
+- Chinese (zh)
+- Japanese (ja)
+- Korean (ko)
+- Arabic (ar) - with RTL support
+
+## 🤝 Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Development Workflow
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+3. Make your changes
+4. Run tests: `npm test && cargo test`
+5. Commit your changes: `git commit -m 'Add amazing feature'`
+6. Push to the branch: `git push origin feature/amazing-feature`
+7. Open a Pull Request
 
-## Development Phases
-
-### Phase 1: Foundation (Weeks 1-3) - Current
-- [x] Project setup and structure
-- [x] Basic Tauri integration
-- [x] Mock wallet operations
-- [ ] CryptoNote C++ FFI integration
-- [ ] Core wallet functionality
-
-### Phase 2: UI Migration (Weeks 4-8)
-- [ ] Complete UI migration from Qt
-- [ ] All wallet features implementation
-- [ ] Modern responsive design
-- [ ] Dark/light theme support
-
-### Phase 3: Advanced Features (Weeks 9-12)
-- [ ] System tray integration
-- [ ] Native notifications
-- [ ] Auto-updater
-- [ ] Advanced security features
-
-### Phase 4: Testing & Launch (Weeks 13-16)
-- [ ] Comprehensive testing
-- [ ] Security audit
-- [ ] Distribution packages
-- [ ] Production release
-
-## License
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
+## 🆘 Support
 
-- Original Fuego Wallet Qt implementation
-- CryptoNote protocol
-- Tauri framework team
-- Rust community
+- **Documentation**: [Wiki](https://github.com/fuego-wallet/fuego-tauri-wallet/wiki)
+- **Issues**: [GitHub Issues](https://github.com/fuego-wallet/fuego-tauri-wallet/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/fuego-wallet/fuego-tauri-wallet/discussions)
+- **Community**: [Fuego Discord](https://discord.gg/fuego)
 
-## Support
+## 🙏 Acknowledgments
 
-- GitHub Issues: [Report bugs or request features](https://github.com/colinritman/fuego-wallet-tauri/issues)
-- Documentation: [Coming soon]
-- Community: [Join our Discord](https://discord.gg/fuego)
+- **Tauri Team** - For the amazing desktop app framework
+- **CryptoNote Community** - For the underlying blockchain technology
+- **Fuego Network** - For the cryptocurrency and ecosystem
+- **Contributors** - All the amazing people who contribute to this project
+
+## 📊 Project Status
+
+- **Version**: 1.0.0
+- **Status**: Active Development
+- **Platforms**: Windows, macOS, Linux
+- **Languages**: 11 supported
+- **Security**: Audited and secure
 
 ---
 
-**Note**: This is a work in progress. The application is currently in Phase 1 development with mock implementations. Real wallet functionality will be added in subsequent phases.
+**Made with ❤️ by the Fuego Community**

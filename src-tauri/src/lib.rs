@@ -7,20 +7,30 @@ pub mod crypto;
 pub mod utils;
 pub mod security;
 pub mod performance;
+pub mod settings;
+pub mod backup;
+pub mod i18n;
 
 use log::info;
 use crate::crypto::ffi::CryptoNoteFFI;
 use crate::crypto::real_cryptonote::{RealCryptoNoteWallet, connect_to_fuego_network, fetch_fuego_network_data};
 use crate::security::{SecurityManager, SecurityConfig, PasswordValidator, WalletEncryption};
 use crate::performance::{PerformanceMonitor, PerformanceConfig, Cache, BackgroundTaskManager};
+use crate::settings::{SettingsManager, AppSettings};
+use crate::backup::{BackupManager, BackupData, BackupType};
+use crate::i18n::{I18nManager, LanguageInfo};
 use std::sync::Arc;
 use std::time::Duration;
+use std::collections::HashMap;
 
-// Global state for security and performance
+// Global state for security, performance, settings, backup, and i18n
 static SECURITY_MANAGER: std::sync::OnceLock<Arc<SecurityManager>> = std::sync::OnceLock::new();
 static PERFORMANCE_MONITOR: std::sync::OnceLock<Arc<PerformanceMonitor>> = std::sync::OnceLock::new();
 static CACHE: std::sync::OnceLock<Arc<Cache<serde_json::Value>>> = std::sync::OnceLock::new();
 static BACKGROUND_TASKS: std::sync::OnceLock<Arc<BackgroundTaskManager>> = std::sync::OnceLock::new();
+static SETTINGS_MANAGER: std::sync::OnceLock<Arc<SettingsManager>> = std::sync::OnceLock::new();
+static BACKUP_MANAGER: std::sync::OnceLock<Arc<BackupManager>> = std::sync::OnceLock::new();
+static I18N_MANAGER: std::sync::OnceLock<Arc<I18nManager>> = std::sync::OnceLock::new();
 
 /// Initialize the Tauri application
 pub fn run() {
@@ -62,6 +72,28 @@ pub fn run() {
             get_background_task_status,
             enable_background_task,
             disable_background_task,
+            // Settings commands
+            get_app_settings,
+            update_app_settings,
+            update_app_wallet_settings,
+            update_app_network_settings,
+            update_app_ui_settings,
+            update_app_security_settings,
+            update_app_performance_settings,
+            reset_app_settings_to_defaults,
+            // Backup commands
+            create_wallet_backup,
+            restore_wallet_backup,
+            list_wallet_backups,
+            delete_wallet_backup,
+            export_wallet_backup,
+            // Internationalization commands
+            get_current_app_language,
+            set_app_language,
+            get_available_app_languages,
+            translate_text,
+            translate_text_with_params,
+            is_app_rtl,
         ])
         .setup(|_app| {
             info!("Fuego Desktop Wallet initialized successfully");
@@ -71,7 +103,7 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-/// Initialize global state for security and performance
+/// Initialize global state for security, performance, settings, backup, and i18n
 fn initialize_global_state() {
     // Initialize security manager
     let security_config = SecurityConfig::default();
@@ -90,6 +122,32 @@ fn initialize_global_state() {
     // Initialize background task manager
     let background_tasks = Arc::new(BackgroundTaskManager::new());
     BACKGROUND_TASKS.set(background_tasks).unwrap();
+
+    // Initialize settings manager
+    match SettingsManager::new() {
+        Ok(settings_manager) => {
+            SETTINGS_MANAGER.set(Arc::new(settings_manager)).unwrap();
+            info!("Settings manager initialized successfully");
+        }
+        Err(e) => {
+            log::error!("Failed to initialize settings manager: {}", e);
+        }
+    }
+
+    // Initialize backup manager
+    match BackupManager::new() {
+        Ok(backup_manager) => {
+            BACKUP_MANAGER.set(Arc::new(backup_manager)).unwrap();
+            info!("Backup manager initialized successfully");
+        }
+        Err(e) => {
+            log::error!("Failed to initialize backup manager: {}", e);
+        }
+    }
+
+    // Initialize i18n manager
+    let i18n_manager = Arc::new(I18nManager::new());
+    I18N_MANAGER.set(i18n_manager).unwrap();
 
     info!("Global state initialized successfully");
 }
@@ -603,4 +661,128 @@ async fn disable_background_task(task_name: String) -> Result<(), String> {
     task_manager.set_task_enabled(&task_name, false);
     log::info!("Background task {} disabled", task_name);
     Ok(())
+}
+
+// ===== PHASE 2.3: PRODUCTION FEATURES COMMANDS =====
+
+// Settings Commands
+#[tauri::command]
+pub async fn get_app_settings() -> Result<AppSettings, String> {
+    let settings_manager = SETTINGS_MANAGER.get().unwrap();
+    settings_manager.get_settings()
+}
+
+#[tauri::command]
+pub async fn update_app_settings(new_settings: AppSettings) -> Result<(), String> {
+    let settings_manager = SETTINGS_MANAGER.get().unwrap();
+    settings_manager.update_settings(new_settings)
+}
+
+#[tauri::command]
+pub async fn update_app_wallet_settings(wallet_settings: crate::settings::WalletSettings) -> Result<(), String> {
+    let settings_manager = SETTINGS_MANAGER.get().unwrap();
+    settings_manager.update_wallet_settings(wallet_settings)
+}
+
+#[tauri::command]
+pub async fn update_app_network_settings(network_settings: crate::settings::NetworkSettings) -> Result<(), String> {
+    let settings_manager = SETTINGS_MANAGER.get().unwrap();
+    settings_manager.update_network_settings(network_settings)
+}
+
+#[tauri::command]
+pub async fn update_app_ui_settings(ui_settings: crate::settings::UISettings) -> Result<(), String> {
+    let settings_manager = SETTINGS_MANAGER.get().unwrap();
+    settings_manager.update_ui_settings(ui_settings)
+}
+
+#[tauri::command]
+pub async fn update_app_security_settings(security_settings: crate::settings::SecuritySettings) -> Result<(), String> {
+    let settings_manager = SETTINGS_MANAGER.get().unwrap();
+    settings_manager.update_security_settings(security_settings)
+}
+
+#[tauri::command]
+pub async fn update_app_performance_settings(performance_settings: crate::settings::PerformanceSettings) -> Result<(), String> {
+    let settings_manager = SETTINGS_MANAGER.get().unwrap();
+    settings_manager.update_performance_settings(performance_settings)
+}
+
+#[tauri::command]
+pub async fn reset_app_settings_to_defaults() -> Result<(), String> {
+    let settings_manager = SETTINGS_MANAGER.get().unwrap();
+    settings_manager.reset_to_defaults()
+}
+
+// Backup Commands
+#[tauri::command]
+pub async fn create_wallet_backup(
+    name: String,
+    description: String,
+    backup_type: BackupType,
+    data: BackupData,
+) -> Result<crate::backup::BackupInfo, String> {
+    let backup_manager = BACKUP_MANAGER.get().unwrap();
+    backup_manager.create_backup(name, description, backup_type, data)
+}
+
+#[tauri::command]
+pub async fn restore_wallet_backup(backup_id: String) -> Result<BackupData, String> {
+    let backup_manager = BACKUP_MANAGER.get().unwrap();
+    backup_manager.restore_backup(backup_id)
+}
+
+#[tauri::command]
+pub async fn list_wallet_backups() -> Result<Vec<crate::backup::BackupInfo>, String> {
+    let backup_manager = BACKUP_MANAGER.get().unwrap();
+    backup_manager.list_backups()
+}
+
+#[tauri::command]
+pub async fn delete_wallet_backup(backup_id: String) -> Result<(), String> {
+    let backup_manager = BACKUP_MANAGER.get().unwrap();
+    backup_manager.delete_backup(backup_id)
+}
+
+#[tauri::command]
+pub async fn export_wallet_backup(backup_id: String, export_path: String) -> Result<(), String> {
+    let backup_manager = BACKUP_MANAGER.get().unwrap();
+    backup_manager.export_backup(backup_id, export_path)
+}
+
+// Internationalization Commands
+#[tauri::command]
+pub async fn get_current_app_language() -> Result<String, String> {
+    let i18n_manager = I18N_MANAGER.get().unwrap();
+    i18n_manager.get_current_language()
+}
+
+#[tauri::command]
+pub async fn set_app_language(language_code: String) -> Result<(), String> {
+    let i18n_manager = I18N_MANAGER.get().unwrap();
+    i18n_manager.set_language(language_code)
+}
+
+#[tauri::command]
+pub async fn get_available_app_languages() -> Result<Vec<LanguageInfo>, String> {
+    let i18n_manager = I18N_MANAGER.get().unwrap();
+    i18n_manager.get_available_languages()
+}
+
+#[tauri::command]
+pub async fn translate_text(key: String) -> Result<String, String> {
+    let i18n_manager = I18N_MANAGER.get().unwrap();
+    i18n_manager.translate(&key)
+}
+
+#[tauri::command]
+pub async fn translate_text_with_params(key: String, params: HashMap<String, String>) -> Result<String, String> {
+    let i18n_manager = I18N_MANAGER.get().unwrap();
+    i18n_manager.translate_with_params(&key, params)
+}
+
+#[tauri::command]
+pub async fn is_app_rtl() -> Result<bool, String> {
+    let i18n_manager = I18N_MANAGER.get().unwrap();
+    i18n_manager.is_rtl()
 }

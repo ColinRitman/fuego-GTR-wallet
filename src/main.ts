@@ -4,13 +4,6 @@ import { invoke } from "@tauri-apps/api/core";
 let walletInfo: any = null;
 let transactions: any[] = [];
 let networkStatus: any = null;
-let termDeposits: any[] = [];
-
-// Real-time update state
-let updateInterval: number | null = null;
-let isUpdating = false;
-let lastSyncHeight = 0;
-let lastBalance = 0;
 
 // DOM elements
 let walletStatusEl: HTMLElement | null;
@@ -18,41 +11,26 @@ let balanceEl: HTMLElement | null;
 let addressEl: HTMLElement | null;
 let transactionsEl: HTMLElement | null;
 let networkStatusEl: HTMLElement | null;
-let syncProgressEl: HTMLElement | null;
-let lastUpdateEl: HTMLElement | null;
 
 // Initialize the application
 async function init() {
   console.log("Initializing Fuego Desktop Wallet...");
   
-  // Get DOM elements
-  getDOMElements();
-  
   // Load initial data
   await loadWalletInfo();
   await loadTransactions();
   await loadNetworkStatus();
-  await loadTermDeposits();
+  await loadDepositAddresses();
+  await loadDepositTransactions();
   
   // Update UI
   updateUI();
   
-  // Start real-time updates
-  startRealTimeUpdates();
-  
-  // Setup event listeners
-  setupEventListeners();
-}
-
-// Get DOM elements
-function getDOMElements() {
-  walletStatusEl = document.querySelector("#wallet-status");
-  balanceEl = document.querySelector("#balance");
-  addressEl = document.querySelector("#address");
-  transactionsEl = document.querySelector("#transactions");
-  networkStatusEl = document.querySelector("#network-status");
-  syncProgressEl = document.querySelector("#sync-progress");
-  lastUpdateEl = document.querySelector("#last-update");
+  // Set the main address as the current deposit address
+  if (walletInfo && walletInfo.address) {
+    currentDepositAddress = walletInfo.address;
+    updateDepositAddressDisplay();
+  }
 }
 
 // Load wallet information
@@ -60,15 +38,8 @@ async function loadWalletInfo() {
   try {
     walletInfo = await invoke("get_wallet_info");
     console.log("Wallet info loaded:", walletInfo);
-    
-    // Track balance changes
-    if (walletInfo && walletInfo.balance !== lastBalance) {
-      lastBalance = walletInfo.balance;
-      showNotification(`Balance updated: ${formatXFG(walletInfo.balance)} XFG`, 'info');
-    }
   } catch (error) {
     console.error("Failed to load wallet info:", error);
-    showNotification("Failed to load wallet info", 'error');
   }
 }
 
@@ -87,21 +58,8 @@ async function loadNetworkStatus() {
   try {
     networkStatus = await invoke("get_network_status");
     console.log("Network status loaded:", networkStatus);
-    
-    // Track sync progress changes
-    if (networkStatus && networkStatus.sync_height !== lastSyncHeight) {
-      const progress = networkStatus.network_height > 0 ? 
-        (networkStatus.sync_height / networkStatus.network_height) * 100 : 0;
-      
-      if (networkStatus.sync_height > lastSyncHeight) {
-        showNotification(`Sync progress: ${progress.toFixed(1)}%`, 'info');
-      }
-      
-      lastSyncHeight = networkStatus.sync_height;
-    }
   } catch (error) {
     console.error("Failed to load network status:", error);
-    showNotification("Failed to load network status", 'error');
   }
 }
 
@@ -163,11 +121,6 @@ function updateUI() {
   
   // Update sync progress display
   updateSyncDisplay(networkStatus);
-  
-  // Update last update timestamp
-  if (lastUpdateEl) {
-    lastUpdateEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
-  }
 }
 
 // Refresh data
@@ -175,14 +128,21 @@ async function refresh() {
   await loadWalletInfo();
   await loadTransactions();
   await loadNetworkStatus();
-  await loadTermDeposits();
+  await loadDepositAddresses();
+  await loadDepositTransactions();
   updateUI();
+  
+  // Update deposit address if needed
+  if (walletInfo && walletInfo.address && !currentDepositAddress) {
+    currentDepositAddress = walletInfo.address;
+    updateDepositAddressDisplay();
+  }
 }
 
 // Test FFI integration
 async function testFFI() {
   try {
-    const result = await invoke("test_ffi_integration");
+    const result: any = await invoke("test_ffi_integration");
     console.log("FFI Test Result:", result);
     
     // Show result in a simple alert for now
@@ -197,7 +157,7 @@ async function testFFI() {
 // Test real CryptoNote integration
 async function testRealCryptoNote() {
   try {
-    const result = await invoke("test_real_cryptonote");
+    const result: any = await invoke("test_real_cryptonote");
     console.log("Real CryptoNote Test Result:", result);
     
     // Show result in a detailed alert
@@ -213,7 +173,7 @@ async function testRealCryptoNote() {
 // Fetch live Fuego network data
 async function fetchLiveNetworkData() {
   try {
-    const data = await invoke("get_fuego_network_data");
+    const data: any = await invoke("get_fuego_network_data");
     console.log("Live Network Data:", data);
     
     // Show detailed network information
@@ -278,297 +238,157 @@ async function sendTransaction() {
 
 // Update sync progress display
 function updateSyncDisplay(networkStatus: any) {
-  const syncEl = document.querySelector("#sync-progress");
-  if (!syncEl || !networkStatus) return;
+  const syncProgressEl = document.querySelector("#sync-progress");
+  const syncDetailsEl = document.querySelector("#sync-details");
   
-  const progress = networkStatus.network_height > 0 ? 
-    (networkStatus.sync_height / networkStatus.network_height) * 100 : 0;
-  
-  // Update progress bar
-  const syncFill = syncEl.querySelector(".sync-fill") as HTMLElement;
-  const syncText = syncEl.querySelector(".sync-text") as HTMLElement;
-  
-  if (syncFill) {
-    syncFill.style.width = `${progress}%`;
-  }
-  
-  if (syncText) {
-    syncText.textContent = `${networkStatus.is_syncing ? 'Syncing' : 'Synced'} 
-      (${networkStatus.sync_height}/${networkStatus.network_height})`;
-  }
-}
-
-// Term Deposits functionality
-
-// Load term deposits
-async function loadTermDeposits() {
-  try {
-    termDeposits = await invoke("get_term_deposits");
-    console.log("Term deposits loaded:", termDeposits);
-    updateTermDepositsDisplay();
-  } catch (error) {
-    console.error("Failed to load term deposits:", error);
-    termDeposits = [];
-    updateTermDepositsDisplay();
-  }
-}
-
-// Create a new term deposit
-async function createTermDeposit() {
-  const amountInput = (document.querySelector("#deposit-amount") as HTMLInputElement)?.value;
-  const termSelect = (document.querySelector("#deposit-term") as HTMLSelectElement)?.value;
-
-  if (!amountInput || !termSelect) {
-    alert("Please fill in all deposit fields");
-    return;
-  }
-
-  const amount = parseFloat(amountInput);
-  if (amount <= 0) {
-    alert("Amount must be greater than 0");
-    return;
-  }
-
-  try {
-    // Convert XFG to atomic units (7 decimal places)
-    const amountAtomicUnits = Math.floor(amount * 10000000);
-    const term = parseInt(termSelect);
-    
-    const depositId = await invoke("create_term_deposit", {
-      amount: amountAtomicUnits,
-      term: term
-    });
-    
-    console.log("Term deposit created:", depositId);
-    alert(`Term deposit created successfully!\nDeposit ID: ${depositId}`);
-    
-    // Clear form
-    (document.querySelector("#deposit-amount") as HTMLInputElement).value = "";
-    
-    // Refresh deposits
-    await loadTermDeposits();
-  } catch (error) {
-    console.error("Failed to create term deposit:", error);
-    alert(`Failed to create term deposit: ${error}`);
-  }
-}
-
-// Update term deposits display
-function updateTermDepositsDisplay() {
-  const depositsListEl = document.querySelector("#deposits-list");
-  
-  if (!depositsListEl) return;
-  
-  if (termDeposits.length === 0) {
-    depositsListEl.innerHTML = `
-      <div style="text-align: center; color: #64748b; padding: 20px;">
-        No term deposits found.<br>
-        Create your first deposit to start earning interest!
-      </div>
-    `;
-    return;
-  }
-  
-  depositsListEl.innerHTML = termDeposits.map(deposit => `
-    <div class="deposit-item">
-      <div class="deposit-header">
-        <div class="deposit-amount">${formatXFG(deposit.amount)} XFG</div>
-        <div class="deposit-status ${deposit.status}">${deposit.status}</div>
-      </div>
-      <div class="deposit-details">
-        <div class="deposit-detail">
-          <span class="deposit-detail-label">Term:</span>
-          <span class="deposit-detail-value">${deposit.term} days</span>
-        </div>
-        <div class="deposit-detail">
-          <span class="deposit-detail-label">Interest Rate:</span>
-          <span class="deposit-detail-value">${deposit.rate}%</span>
-        </div>
-        <div class="deposit-detail">
-          <span class="deposit-detail-label">Interest Earned:</span>
-          <span class="deposit-detail-value">${formatXFG(deposit.interest)} XFG</span>
-        </div>
-        <div class="deposit-detail">
-          <span class="deposit-detail-label">Unlock Time:</span>
-          <span class="deposit-detail-value">${deposit.unlockTime || 'N/A'}</span>
-        </div>
-      </div>
-    </div>
-  `).join('');
-}
-
-// Format XFG amount (atomic units to XFG with 7 decimal places)
-function formatXFG(atomicUnits: number): string {
-  return (atomicUnits / 10000000).toFixed(7);
-}
-
-// ===== PHASE 2.1: ENHANCED USER EXPERIENCE =====
-
-// Start real-time updates
-function startRealTimeUpdates() {
-  if (updateInterval) {
-    clearInterval(updateInterval);
-  }
-  
-  // Update every 5 seconds
-  updateInterval = setInterval(async () => {
-    if (!isUpdating) {
-      await performBackgroundUpdate();
-    }
-  }, 5000);
-  
-  console.log("Real-time updates started");
-}
-
-// Stop real-time updates
-function stopRealTimeUpdates() {
-  if (updateInterval) {
-    clearInterval(updateInterval);
-    updateInterval = null;
-  }
-  console.log("Real-time updates stopped");
-}
-
-// Perform background update
-async function performBackgroundUpdate() {
-  if (isUpdating) return;
-  
-  isUpdating = true;
-  
-  try {
-    // Update network status and wallet info in background
-    await Promise.all([
-      loadNetworkStatus(),
-      loadWalletInfo()
-    ]);
-    
-    // Update UI with new data
-    updateUI();
-    
-    // Update last update timestamp
-    if (lastUpdateEl) {
-      lastUpdateEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
-    }
-    
-  } catch (error) {
-    console.error("Background update failed:", error);
-  } finally {
-    isUpdating = false;
-  }
-}
-
-// Setup event listeners
-function setupEventListeners() {
-  // Refresh button
-  document.querySelector("#refresh-btn")?.addEventListener("click", async () => {
-    showNotification("Refreshing data...", 'info');
-    await refresh();
-    showNotification("Data refreshed", 'success');
-  });
-  
-  // Auto-refresh on window focus
-  window.addEventListener('focus', async () => {
-    console.log("Window focused, refreshing data...");
-    await performBackgroundUpdate();
-  });
-  
-  // Pause updates when window is hidden
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      stopRealTimeUpdates();
+  if (syncProgressEl && syncDetailsEl) {
+    if (networkStatus.is_syncing) {
+      const progress = ((networkStatus.sync_height / networkStatus.network_height) * 100).toFixed(1);
+      syncProgressEl.textContent = `Syncing... ${progress}%`;
+      syncDetailsEl.textContent = `Block ${networkStatus.sync_height.toLocaleString()} of ${networkStatus.network_height.toLocaleString()}`;
     } else {
-      startRealTimeUpdates();
+      syncProgressEl.textContent = "✅ Fully Synced";
+      syncDetailsEl.textContent = `Connected to ${networkStatus.connection_type}`;
     }
-  });
+  }
 }
 
-// Show notification
-function showNotification(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
-  // Create notification element
-  const notification = document.createElement('div');
-  notification.className = `notification ${type}`;
-  notification.textContent = message;
-  
-  // Add to page
-  document.body.appendChild(notification);
-  
-  // Auto-remove after 3 seconds
-  setTimeout(() => {
-    if (notification.parentNode) {
-      notification.parentNode.removeChild(notification);
-    }
-  }, 3000);
-  
-  console.log(`Notification [${type}]: ${message}`);
-}
+// Deposit functionality
+let currentDepositAddress = "";
+let depositAddresses: any[] = [];
+let depositTransactions: any[] = [];
 
-// Enhanced transaction loading with pagination
-async function loadMoreTransactions() {
+// Load deposit addresses
+async function loadDepositAddresses() {
   try {
-    const moreTransactions = await invoke("get_transactions", { 
-      limit: 10, 
-      offset: transactions.length 
-    });
-    
-    if (moreTransactions && moreTransactions.length > 0) {
-      transactions = [...transactions, ...moreTransactions];
-      updateUI();
-      showNotification(`Loaded ${moreTransactions.length} more transactions`, 'info');
-    } else {
-      showNotification("No more transactions to load", 'info');
-    }
+    depositAddresses = await invoke("get_deposit_addresses");
+    console.log("Deposit addresses loaded:", depositAddresses);
+    updateDepositAddressesDisplay();
   } catch (error) {
-    console.error("Failed to load more transactions:", error);
-    showNotification("Failed to load more transactions", 'error');
+    console.error("Failed to load deposit addresses:", error);
   }
 }
 
-// Enhanced deposit creation with validation
-async function createTermDepositEnhanced() {
-  const amountInput = (document.querySelector("#deposit-amount") as HTMLInputElement)?.value;
-  const termSelect = (document.querySelector("#deposit-term") as HTMLSelectElement)?.value;
-
-  if (!amountInput || !termSelect) {
-    showNotification("Please fill in all deposit fields", 'warning');
-    return;
-  }
-
-  const amount = parseFloat(amountInput);
-  if (amount <= 0) {
-    showNotification("Amount must be greater than 0", 'warning');
-    return;
-  }
-
-  // Check if user has sufficient balance
-  if (walletInfo && amount * 10000000 > walletInfo.balance) {
-    showNotification("Insufficient balance for this deposit", 'error');
-    return;
-  }
-
+// Load deposit transactions
+async function loadDepositTransactions() {
   try {
-    showNotification("Creating term deposit...", 'info');
-    
-    // Convert XFG to atomic units (7 decimal places)
-    const amountAtomicUnits = Math.floor(amount * 10000000);
-    const term = parseInt(termSelect);
-    
-    const depositId = await invoke("create_term_deposit", {
-      amount: amountAtomicUnits,
-      term: term
-    });
-    
-    console.log("Deposit created:", depositId);
-    showNotification(`Term deposit created successfully! Deposit ID: ${depositId}`, 'success');
-    
-    // Clear form
-    (document.querySelector("#deposit-amount") as HTMLInputElement).value = "";
-    
-    // Refresh deposits
-    await loadTermDeposits();
-    
+    depositTransactions = await invoke("get_deposit_transactions");
+    console.log("Deposit transactions loaded:", depositTransactions);
+    updateDepositTransactionsDisplay();
   } catch (error) {
-    console.error("Failed to create deposit:", error);
-    showNotification(`Failed to create deposit: ${error}`, 'error');
+    console.error("Failed to load deposit transactions:", error);
+  }
+}
+
+// Generate new deposit address
+async function generateNewDepositAddress() {
+  const label = prompt("Enter a label for this deposit address (optional):");
+  if (label === null) return; // User cancelled
+  
+  try {
+    const newAddress: any = await invoke("generate_deposit_address", { label: label || null });
+    console.log("Generated new deposit address:", newAddress);
+    
+    // Reload deposit addresses
+    await loadDepositAddresses();
+    
+    // Update main deposit address display
+    currentDepositAddress = newAddress.address;
+    updateDepositAddressDisplay();
+    
+    alert(`New deposit address generated!\n\nAddress: ${newAddress.address}\nLabel: ${newAddress.label}`);
+  } catch (error) {
+    console.error("Failed to generate deposit address:", error);
+    alert(`Failed to generate deposit address: ${error}`);
+  }
+}
+
+// Copy address to clipboard
+async function copyAddressToClipboard() {
+  if (!currentDepositAddress) {
+    alert("No deposit address available");
+    return;
+  }
+  
+  try {
+    await navigator.clipboard.writeText(currentDepositAddress);
+    alert("Address copied to clipboard!");
+  } catch (error) {
+    console.error("Failed to copy address:", error);
+    // Fallback for older browsers
+    const textArea = document.createElement("textarea");
+    textArea.value = currentDepositAddress;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textArea);
+    alert("Address copied to clipboard!");
+  }
+}
+
+// Update deposit address display
+function updateDepositAddressDisplay() {
+  const depositAddressEl = document.querySelector("#deposit-address");
+  if (depositAddressEl) {
+    depositAddressEl.textContent = currentDepositAddress || "Loading...";
+  }
+  
+  // Update QR code placeholder
+  const qrCodeEl = document.querySelector("#qr-code .qr-placeholder");
+  if (qrCodeEl && currentDepositAddress) {
+    qrCodeEl.textContent = `QR Code for:\n${currentDepositAddress.substring(0, 20)}...`;
+  }
+}
+
+// Update deposit addresses list
+function updateDepositAddressesDisplay() {
+  const addressesEl = document.querySelector("#deposit-addresses");
+  if (addressesEl) {
+    if (depositAddresses.length === 0) {
+      addressesEl.innerHTML = '<div class="no-data">No deposit addresses found</div>';
+      return;
+    }
+    
+    addressesEl.innerHTML = depositAddresses.map(addr => `
+      <div class="deposit-address-item">
+        <div class="deposit-address-item-header">
+          <span class="deposit-address-label">${addr.label}</span>
+          <span class="deposit-address-stats">
+            ${addr.transaction_count} transactions • ${(addr.total_received / 10000000).toFixed(7)} XFG received
+          </span>
+        </div>
+        <div class="deposit-address-text">${addr.address}</div>
+        <div class="deposit-address-stats">
+          Created: ${new Date(addr.created_at * 1000).toLocaleString()}
+          ${addr.is_main ? ' • Main Address' : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+// Update deposit transactions display
+function updateDepositTransactionsDisplay() {
+  const transactionsEl = document.querySelector("#deposit-transactions");
+  if (transactionsEl) {
+    if (depositTransactions.length === 0) {
+      transactionsEl.innerHTML = '<div class="no-data">No deposit transactions found</div>';
+      return;
+    }
+    
+    transactionsEl.innerHTML = depositTransactions.map(tx => `
+      <div class="deposit-transaction-item">
+        <div class="deposit-transaction-header">
+          <span class="deposit-transaction-amount">+${(tx.amount / 10000000).toFixed(7)} XFG</span>
+          <span class="deposit-transaction-time">${new Date(tx.timestamp * 1000).toLocaleString()}</span>
+        </div>
+        <div class="deposit-transaction-details">
+          From: ${tx.from_address}<br>
+          Transaction: ${tx.hash}<br>
+          Status: ${tx.is_confirmed ? 'Confirmed' : 'Pending'}
+        </div>
+      </div>
+    `).join('');
   }
 }
 
@@ -595,11 +415,9 @@ window.addEventListener("DOMContentLoaded", () => {
   // Set up send transaction button
   document.querySelector("#send-btn")?.addEventListener("click", sendTransaction);
   
-  // Set up create term deposit button
-  document.querySelector("#create-deposit-btn")?.addEventListener("click", createTermDepositEnhanced);
-  
-  // Set up load more transactions button
-  document.querySelector("#load-more-btn")?.addEventListener("click", loadMoreTransactions);
+  // Set up deposit buttons
+  document.querySelector("#copy-address-btn")?.addEventListener("click", copyAddressToClipboard);
+  document.querySelector("#generate-new-address-btn")?.addEventListener("click", generateNewDepositAddress);
   
   // Initialize the app
   init();

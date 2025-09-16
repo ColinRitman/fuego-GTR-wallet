@@ -9,7 +9,6 @@ use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_void};
 use std::ptr;
 use crate::utils::error::{WalletError, WalletResult};
-use serde_json::Value;
 
 // Deposit data structure matching CryptoNote implementation
 #[derive(Debug, Clone)]

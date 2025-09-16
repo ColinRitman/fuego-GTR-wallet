@@ -83,6 +83,11 @@ bool fuego_wallet_connect_node(
 
 NetworkStatus fuego_wallet_get_network_status(FuegoWallet wallet);
 
+// Deposit operations
+void* fuego_wallet_get_deposits(FuegoWallet wallet);
+void* fuego_wallet_create_deposit(FuegoWallet wallet, uint64_t amount, uint32_t term);
+void* fuego_wallet_withdraw_deposit(FuegoWallet wallet, const char* deposit_id);
+
 // Utility functions
 void fuego_wallet_free_string(char* s);
 void fuego_wallet_free_transactions(TransactionList txs);

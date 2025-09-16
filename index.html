@@ -43,10 +43,20 @@
         <div class="network-status">
           <h2>Network Status</h2>
           <div id="network-status" class="network-info">Loading...</div>
+          <div id="sync-progress" class="sync-progress">
+            <div class="sync-bar">
+              <div class="sync-fill" style="width: 0%"></div>
+            </div>
+            <div class="sync-text">Syncing...</div>
+          </div>
+          <div id="last-update" class="last-update">Last updated: --</div>
         </div>
 
         <div class="transactions-section">
-          <h2>Recent Transactions</h2>
+          <div class="transactions-header">
+            <h2>Recent Transactions</h2>
+            <button id="load-more-btn" class="btn btn-secondary">Load More</button>
+          </div>
           <div id="transactions" class="transactions-list">
             Loading transactions...
           </div>

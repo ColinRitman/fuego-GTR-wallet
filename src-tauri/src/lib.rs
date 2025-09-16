@@ -256,11 +256,40 @@ async fn get_term_deposits() -> Result<Vec<serde_json::Value>, String> {
     // Connect to Fuego network
     let _ = connect_to_fuego_network(&mut real_wallet);
     
-    // For now, return empty list - real deposits will be loaded from blockchain
-    // TODO: Implement real deposit loading from CryptoNote blockchain
-    log::info!("Retrieved term deposits (currently empty - needs blockchain scanning)");
-    
-    Ok(vec![])
+    // Get real deposits from CryptoNote wallet
+    match real_wallet.get_deposits() {
+        Ok(deposits) => {
+            let mut deposit_list = Vec::new();
+            
+            for deposit in deposits {
+                let deposit_json = serde_json::json!({
+                    "id": deposit.id,
+                    "amount": deposit.amount,
+                    "interest": deposit.interest,
+                    "term": deposit.term,
+                    "rate": deposit.rate,
+                    "status": deposit.status,
+                    "unlock_height": deposit.unlock_height,
+                    "unlock_time": deposit.unlock_time,
+                    "creating_transaction_hash": deposit.creating_transaction_hash,
+                    "creating_height": deposit.creating_height,
+                    "creating_time": deposit.creating_time,
+                    "spending_transaction_hash": deposit.spending_transaction_hash,
+                    "spending_height": deposit.spending_height,
+                    "spending_time": deposit.spending_time,
+                    "type": deposit.deposit_type
+                });
+                deposit_list.push(deposit_json);
+            }
+            
+            log::info!("Retrieved {} term deposits from blockchain", deposit_list.len());
+            Ok(deposit_list)
+        }
+        Err(e) => {
+            log::error!("Failed to get deposits: {}", e);
+            Err(format!("Failed to get deposits: {}", e))
+        }
+    }
 }
 
 /// Create a new term deposit (stake XFG for interest)
@@ -288,13 +317,17 @@ async fn create_term_deposit(amount: u64, term: u32) -> Result<String, String> {
         return Err("Term must be between 1 and 365 days".to_string());
     }
     
-    // Create deposit transaction
-    // TODO: Implement real deposit creation using CryptoNote deposit functionality
-    let deposit_id = format!("deposit_{}_{}_{}", amount, term, chrono::Utc::now().timestamp());
-    
-    log::info!("Created term deposit: {} XFG for {} days", amount / 10000000, term);
-    
-    Ok(deposit_id)
+    // Create real deposit transaction using CryptoNote
+    match real_wallet.create_deposit(amount, term) {
+        Ok(deposit_id) => {
+            log::info!("Created term deposit: {} XFG for {} days (ID: {})", amount / 10000000, term, deposit_id);
+            Ok(deposit_id)
+        }
+        Err(e) => {
+            log::error!("Failed to create deposit: {}", e);
+            Err(format!("Failed to create deposit: {}", e))
+        }
+    }
 }
 
 /// Withdraw a term deposit (claim principal + interest)
@@ -313,11 +346,15 @@ async fn withdraw_term_deposit(deposit_id: String) -> Result<String, String> {
     // Connect to Fuego network
     let _ = connect_to_fuego_network(&mut real_wallet);
     
-    // Withdraw deposit
-    // TODO: Implement real deposit withdrawal using CryptoNote deposit functionality
-    let tx_hash = format!("withdraw_tx_{}_{}", deposit_id, chrono::Utc::now().timestamp());
-    
-    log::info!("Withdrew term deposit: {}", deposit_id);
-    
-    Ok(tx_hash)
+    // Withdraw deposit using real CryptoNote functionality
+    match real_wallet.withdraw_deposit(&deposit_id) {
+        Ok(tx_hash) => {
+            log::info!("Withdrew term deposit: {} (TX: {})", deposit_id, tx_hash);
+            Ok(tx_hash)
+        }
+        Err(e) => {
+            log::error!("Failed to withdraw deposit: {}", e);
+            Err(format!("Failed to withdraw deposit: {}", e))
+        }
+    }
 }

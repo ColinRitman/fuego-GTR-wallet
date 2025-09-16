@@ -43,6 +43,27 @@ struct RealFuegoWallet {
     // Transaction history
     std::vector<std::string> transaction_hashes;
     
+    // Deposit management
+    struct Deposit {
+        std::string id;
+        uint64_t amount;
+        uint64_t interest;
+        uint32_t term;
+        double rate;
+        std::string status; // "locked", "unlocked", "spent"
+        uint64_t unlock_height;
+        std::string unlock_time;
+        std::string creating_transaction_hash;
+        uint64_t creating_height;
+        std::string creating_time;
+        std::string spending_transaction_hash;
+        uint64_t spending_height;
+        std::string spending_time;
+        std::string deposit_type;
+    };
+    
+    std::vector<Deposit> deposits;
+    
     RealFuegoWallet() : balance(0), unlocked_balance(0), is_open(false), is_connected(false),
                         restore_height(0), peer_count(0), sync_height(0), network_height(0),
                         is_syncing(false), connection_type("Disconnected") {
@@ -305,6 +326,101 @@ extern "C" NetworkStatus fuego_wallet_get_network_status(FuegoWallet wallet) {
     status.connection_type[sizeof(status.connection_type) - 1] = '\0';
     
     return status;
+}
+
+// Deposit functions
+extern "C" void* fuego_wallet_get_deposits(FuegoWallet wallet) {
+    if (g_real_wallet.get() != wallet) {
+        return nullptr;
+    }
+    
+    // Return pointer to deposits vector for parsing by Rust
+    // In a real implementation, this would serialize the deposits to a C-compatible format
+    return static_cast<void*>(&g_real_wallet->deposits);
+}
+
+extern "C" void* fuego_wallet_create_deposit(FuegoWallet wallet, uint64_t amount, uint32_t term) {
+    if (g_real_wallet.get() != wallet) {
+        return nullptr;
+    }
+    
+    // Create a new deposit
+    RealFuegoWallet::Deposit deposit;
+    deposit.id = "deposit_" + std::to_string(amount) + "_" + std::to_string(term) + "_" + std::to_string(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+    deposit.amount = amount;
+    deposit.term = term;
+    
+    // Calculate interest rate based on term (longer terms = higher rates)
+    if (term <= 30) {
+        deposit.rate = 0.05; // 5% annual
+    } else if (term <= 90) {
+        deposit.rate = 0.08; // 8% annual
+    } else if (term <= 180) {
+        deposit.rate = 0.12; // 12% annual
+    } else {
+        deposit.rate = 0.15; // 15% annual
+    }
+    
+    // Calculate interest (simplified calculation)
+    deposit.interest = static_cast<uint64_t>(amount * deposit.rate * term / 365.0);
+    deposit.status = "locked";
+    deposit.unlock_height = g_real_wallet->network_height + (term * 24 * 60 * 60 / 120); // Assuming 2-minute blocks
+    deposit.unlock_time = "TBD"; // Would calculate actual unlock time
+    deposit.creating_transaction_hash = "tx_" + deposit.id;
+    deposit.creating_height = g_real_wallet->network_height;
+    deposit.creating_time = "Now";
+    deposit.spending_transaction_hash = "";
+    deposit.spending_height = 0;
+    deposit.spending_time = "";
+    deposit.deposit_type = "Term Deposit";
+    
+    // Add to deposits list
+    g_real_wallet->deposits.push_back(deposit);
+    
+    // Return deposit ID as C string
+    char* deposit_id = new char[deposit.id.length() + 1];
+    strcpy(deposit_id, deposit.id.c_str());
+    
+    std::cout << "Created term deposit: " << amount / 10000000.0 << " XFG for " << term << " days (ID: " << deposit.id << ")" << std::endl;
+    
+    return deposit_id;
+}
+
+extern "C" void* fuego_wallet_withdraw_deposit(FuegoWallet wallet, const char* deposit_id) {
+    if (g_real_wallet.get() != wallet || !deposit_id) {
+        return nullptr;
+    }
+    
+    // Find the deposit
+    auto it = std::find_if(g_real_wallet->deposits.begin(), g_real_wallet->deposits.end(),
+                          [deposit_id](const RealFuegoWallet::Deposit& deposit) {
+                              return deposit.id == std::string(deposit_id);
+                          });
+    
+    if (it == g_real_wallet->deposits.end()) {
+        std::cout << "Deposit not found: " << deposit_id << std::endl;
+        return nullptr;
+    }
+    
+    // Check if deposit is unlocked
+    if (it->status != "unlocked") {
+        std::cout << "Deposit is not unlocked yet: " << deposit_id << std::endl;
+        return nullptr;
+    }
+    
+    // Mark as spent
+    it->status = "spent";
+    it->spending_transaction_hash = "withdraw_tx_" + it->id;
+    it->spending_height = g_real_wallet->network_height;
+    it->spending_time = "Now";
+    
+    // Return transaction hash as C string
+    char* tx_hash = new char[it->spending_transaction_hash.length() + 1];
+    strcpy(tx_hash, it->spending_transaction_hash.c_str());
+    
+    std::cout << "Withdrew term deposit: " << deposit_id << " (TX: " << it->spending_transaction_hash << ")" << std::endl;
+    
+    return tx_hash;
 }
 
 // Utility functions

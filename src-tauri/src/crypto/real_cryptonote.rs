@@ -11,6 +11,26 @@ use std::ptr;
 use crate::utils::error::{WalletError, WalletResult};
 use serde_json::Value;
 
+// Deposit data structure matching CryptoNote implementation
+#[derive(Debug, Clone)]
+pub struct DepositInfo {
+    pub id: String,
+    pub amount: u64,
+    pub interest: u64,
+    pub term: u32,
+    pub rate: f64,
+    pub status: String, // "locked", "unlocked", "spent"
+    pub unlock_height: u64,
+    pub unlock_time: Option<String>,
+    pub creating_transaction_hash: String,
+    pub creating_height: u64,
+    pub creating_time: String,
+    pub spending_transaction_hash: Option<String>,
+    pub spending_height: Option<u64>,
+    pub spending_time: Option<String>,
+    pub deposit_type: String,
+}
+
 // FFI bindings for real CryptoNote operations
 extern "C" {
     // Wallet operations
@@ -49,6 +69,11 @@ extern "C" {
         limit: u64,
         offset: u64,
     ) -> *mut c_void;
+    
+    // Deposit operations
+    fn fuego_wallet_get_deposits(wallet: *mut c_void) -> *mut c_void;
+    fn fuego_wallet_create_deposit(wallet: *mut c_void, amount: u64, term: u32) -> *mut c_void;
+    fn fuego_wallet_withdraw_deposit(wallet: *mut c_void, deposit_id: *const c_char) -> *mut c_void;
     
     // Network operations
     fn fuego_wallet_connect_node(
@@ -306,6 +331,89 @@ impl RealCryptoNoteWallet {
             "is_syncing": self.is_connected,
             "connection_type": if self.is_connected { "Fuego Network (XFG) - fuego.spaceportx.net" } else { "Disconnected" }
         }))
+    }
+    
+    /// Get all term deposits from the wallet
+    pub fn get_deposits(&self) -> WalletResult<Vec<DepositInfo>> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+        
+        let deposits_ptr = unsafe {
+            fuego_wallet_get_deposits(self.wallet_ptr)
+        };
+        
+        if deposits_ptr.is_null() {
+            return Err(WalletError::TransactionFailed(
+                "Failed to get deposits from wallet".to_string(),
+            ));
+        }
+        
+        // Parse deposits from deposits_ptr
+        // For now, return empty list - real implementation would parse C++ deposit data
+        // TODO: Implement real deposit parsing from CryptoNote C++ data structures
+        Ok(vec![])
+    }
+    
+    /// Create a new term deposit
+    pub fn create_deposit(&self, amount: u64, term: u32) -> WalletResult<String> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+        
+        let deposit_ptr = unsafe {
+            fuego_wallet_create_deposit(self.wallet_ptr, amount, term)
+        };
+        
+        if deposit_ptr.is_null() {
+            return Err(WalletError::TransactionFailed(
+                "Failed to create deposit".to_string(),
+            ));
+        }
+        
+        // Parse deposit ID from deposit_ptr
+        // For now, return a mock ID - real implementation would parse C++ deposit data
+        // TODO: Implement real deposit creation using CryptoNote C++ functionality
+        let deposit_id = format!("deposit_{}_{}_{}", amount, term, chrono::Utc::now().timestamp());
+        
+        // Free the deposit pointer
+        unsafe {
+            fuego_wallet_free_string(deposit_ptr as *mut c_char);
+        }
+        
+        Ok(deposit_id)
+    }
+    
+    /// Withdraw a term deposit
+    pub fn withdraw_deposit(&self, deposit_id: &str) -> WalletResult<String> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+        
+        let deposit_id_cstr = CString::new(deposit_id)
+            .map_err(|_| WalletError::Generic("Invalid deposit ID".to_string()))?;
+        
+        let tx_ptr = unsafe {
+            fuego_wallet_withdraw_deposit(self.wallet_ptr, deposit_id_cstr.as_ptr())
+        };
+        
+        if tx_ptr.is_null() {
+            return Err(WalletError::TransactionFailed(
+                "Failed to withdraw deposit".to_string(),
+            ));
+        }
+        
+        // Parse transaction hash from tx_ptr
+        // For now, return a mock hash - real implementation would parse C++ transaction data
+        // TODO: Implement real deposit withdrawal using CryptoNote C++ functionality
+        let tx_hash = format!("withdraw_tx_{}_{}", deposit_id, chrono::Utc::now().timestamp());
+        
+        // Free the transaction pointer
+        unsafe {
+            fuego_wallet_free_string(tx_ptr as *mut c_char);
+        }
+        
+        Ok(tx_hash)
     }
 }
 

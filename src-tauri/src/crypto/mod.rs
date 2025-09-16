@@ -7,5 +7,7 @@
 //! to the existing CryptoNote C++ cryptographic code.
 
 pub mod ffi;
+pub mod real_cryptonote;
 
 pub use ffi::CryptoNoteFFI;
+pub use real_cryptonote::{RealCryptoNoteWallet, connect_to_fuego_network};

@@ -133,6 +133,21 @@ async function testFFI() {
   }
 }
 
+// Test real CryptoNote integration
+async function testRealCryptoNote() {
+  try {
+    const result = await invoke("test_real_cryptonote");
+    console.log("Real CryptoNote Test Result:", result);
+    
+    // Show result in a detailed alert
+    const networkStatus = result.network.status;
+    alert(`Real Fuego Test Successful!\n\nWallet Address: ${result.wallet.address}\nBalance: ${result.wallet.balance}\nNetwork Connected: ${networkStatus.is_connected}\nConnection Type: ${networkStatus.connection_type}\nPeer Count: ${networkStatus.peer_count}\nTransaction Hash: ${result.transaction.hash}`);
+  } catch (error) {
+    console.error("Real CryptoNote Test Failed:", error);
+    alert(`Real CryptoNote Test Failed: ${error}`);
+  }
+}
+
 // Initialize when DOM is loaded
 window.addEventListener("DOMContentLoaded", () => {
   walletStatusEl = document.querySelector("#wallet-status");
@@ -146,6 +161,9 @@ window.addEventListener("DOMContentLoaded", () => {
   
   // Set up FFI test button
   document.querySelector("#test-ffi-btn")?.addEventListener("click", testFFI);
+  
+  // Set up real CryptoNote test button
+  document.querySelector("#test-real-btn")?.addEventListener("click", testRealCryptoNote);
   
   // Initialize the app
   init();

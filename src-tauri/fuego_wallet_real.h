@@ -1,0 +1,86 @@
+// Copyright (c) 2024 Fuego Private Banking Network
+// Distributed under the MIT/X11 software license
+
+//! Real Fuego wallet implementation
+//! 
+//! This header provides real CryptoNote wallet operations for the Fuego network.
+
+#ifndef FUEGO_WALLET_REAL_H
+#define FUEGO_WALLET_REAL_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+
+// Forward declarations
+typedef void* FuegoWallet;
+typedef void* TransactionResult;
+typedef void* TransactionList;
+typedef void* NetworkStatus;
+
+// Wallet creation and management
+FuegoWallet fuego_wallet_create(
+    const char* password,
+    const char* file_path,
+    const char* seed_phrase,
+    uint64_t restore_height
+);
+
+FuegoWallet fuego_wallet_open(
+    const char* file_path,
+    const char* password
+);
+
+void fuego_wallet_close(FuegoWallet wallet);
+
+bool fuego_wallet_is_open(FuegoWallet wallet);
+
+// Wallet information
+uint64_t fuego_wallet_get_balance(FuegoWallet wallet);
+
+uint64_t fuego_wallet_get_unlocked_balance(FuegoWallet wallet);
+
+bool fuego_wallet_get_address(
+    FuegoWallet wallet,
+    char* buffer,
+    size_t buffer_size
+);
+
+// Transaction operations
+TransactionResult fuego_wallet_send_transaction(
+    FuegoWallet wallet,
+    const char* address,
+    uint64_t amount,
+    const char* payment_id,
+    uint64_t mixin
+);
+
+TransactionList fuego_wallet_get_transactions(
+    FuegoWallet wallet,
+    uint64_t limit,
+    uint64_t offset
+);
+
+// Network operations
+bool fuego_wallet_connect_node(
+    FuegoWallet wallet,
+    const char* address,
+    uint16_t port
+);
+
+NetworkStatus fuego_wallet_get_network_status(FuegoWallet wallet);
+
+// Utility functions
+void fuego_wallet_free_string(char* s);
+void fuego_wallet_free_transactions(TransactionList txs);
+void fuego_wallet_free_network_status(NetworkStatus status);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // FUEGO_WALLET_REAL_H

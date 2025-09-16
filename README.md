@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/github/license/fuego-wallet/fuego-tauri-wallet)](LICENSE)
 [![Security](https://img.shields.io/badge/security-audited-green.svg)](SECURITY.md)
 
-**Fuego ₲𝚻 Wallet** is a modern, secure, and feature-rich desktop cryptocurrency wallet for the Fuego (XFG) blockchain. Built with Tauri, Rust, and modern web technologies, it provides a native desktop experience with advanced security features and comprehensive functionality.
+**Fuego ₲𝚻𝐑 Wallet** is a modern, secure, and feature-rich desktop cryptocurrency wallet for the Fuego (XFG) blockchain. Built with Tauri, Rust, and modern web technologies, it provides a native desktop experience with advanced security features and comprehensive functionality.
 
 ## ✨ Features
 

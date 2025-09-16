@@ -20,9 +20,17 @@ async function init() {
   await loadWalletInfo();
   await loadTransactions();
   await loadNetworkStatus();
+  await loadDepositAddresses();
+  await loadDepositTransactions();
   
   // Update UI
   updateUI();
+  
+  // Set the main address as the current deposit address
+  if (walletInfo && walletInfo.address) {
+    currentDepositAddress = walletInfo.address;
+    updateDepositAddressDisplay();
+  }
 }
 
 // Load wallet information
@@ -120,7 +128,15 @@ async function refresh() {
   await loadWalletInfo();
   await loadTransactions();
   await loadNetworkStatus();
+  await loadDepositAddresses();
+  await loadDepositTransactions();
   updateUI();
+  
+  // Update deposit address if needed
+  if (walletInfo && walletInfo.address && !currentDepositAddress) {
+    currentDepositAddress = walletInfo.address;
+    updateDepositAddressDisplay();
+  }
 }
 
 // Test FFI integration
@@ -237,6 +253,145 @@ function updateSyncDisplay(networkStatus: any) {
   }
 }
 
+// Deposit functionality
+let currentDepositAddress = "";
+let depositAddresses: any[] = [];
+let depositTransactions: any[] = [];
+
+// Load deposit addresses
+async function loadDepositAddresses() {
+  try {
+    depositAddresses = await invoke("get_deposit_addresses");
+    console.log("Deposit addresses loaded:", depositAddresses);
+    updateDepositAddressesDisplay();
+  } catch (error) {
+    console.error("Failed to load deposit addresses:", error);
+  }
+}
+
+// Load deposit transactions
+async function loadDepositTransactions() {
+  try {
+    depositTransactions = await invoke("get_deposit_transactions");
+    console.log("Deposit transactions loaded:", depositTransactions);
+    updateDepositTransactionsDisplay();
+  } catch (error) {
+    console.error("Failed to load deposit transactions:", error);
+  }
+}
+
+// Generate new deposit address
+async function generateNewDepositAddress() {
+  const label = prompt("Enter a label for this deposit address (optional):");
+  if (label === null) return; // User cancelled
+  
+  try {
+    const newAddress = await invoke("generate_deposit_address", { label: label || null });
+    console.log("Generated new deposit address:", newAddress);
+    
+    // Reload deposit addresses
+    await loadDepositAddresses();
+    
+    // Update main deposit address display
+    currentDepositAddress = newAddress.address;
+    updateDepositAddressDisplay();
+    
+    alert(`New deposit address generated!\n\nAddress: ${newAddress.address}\nLabel: ${newAddress.label}`);
+  } catch (error) {
+    console.error("Failed to generate deposit address:", error);
+    alert(`Failed to generate deposit address: ${error}`);
+  }
+}
+
+// Copy address to clipboard
+async function copyAddressToClipboard() {
+  if (!currentDepositAddress) {
+    alert("No deposit address available");
+    return;
+  }
+  
+  try {
+    await navigator.clipboard.writeText(currentDepositAddress);
+    alert("Address copied to clipboard!");
+  } catch (error) {
+    console.error("Failed to copy address:", error);
+    // Fallback for older browsers
+    const textArea = document.createElement("textarea");
+    textArea.value = currentDepositAddress;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textArea);
+    alert("Address copied to clipboard!");
+  }
+}
+
+// Update deposit address display
+function updateDepositAddressDisplay() {
+  const depositAddressEl = document.querySelector("#deposit-address");
+  if (depositAddressEl) {
+    depositAddressEl.textContent = currentDepositAddress || "Loading...";
+  }
+  
+  // Update QR code placeholder
+  const qrCodeEl = document.querySelector("#qr-code .qr-placeholder");
+  if (qrCodeEl && currentDepositAddress) {
+    qrCodeEl.textContent = `QR Code for:\n${currentDepositAddress.substring(0, 20)}...`;
+  }
+}
+
+// Update deposit addresses list
+function updateDepositAddressesDisplay() {
+  const addressesEl = document.querySelector("#deposit-addresses");
+  if (addressesEl) {
+    if (depositAddresses.length === 0) {
+      addressesEl.innerHTML = '<div class="no-data">No deposit addresses found</div>';
+      return;
+    }
+    
+    addressesEl.innerHTML = depositAddresses.map(addr => `
+      <div class="deposit-address-item">
+        <div class="deposit-address-item-header">
+          <span class="deposit-address-label">${addr.label}</span>
+          <span class="deposit-address-stats">
+            ${addr.transaction_count} transactions • ${(addr.total_received / 10000000).toFixed(7)} XFG received
+          </span>
+        </div>
+        <div class="deposit-address-text">${addr.address}</div>
+        <div class="deposit-address-stats">
+          Created: ${new Date(addr.created_at * 1000).toLocaleString()}
+          ${addr.is_main ? ' • Main Address' : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+// Update deposit transactions display
+function updateDepositTransactionsDisplay() {
+  const transactionsEl = document.querySelector("#deposit-transactions");
+  if (transactionsEl) {
+    if (depositTransactions.length === 0) {
+      transactionsEl.innerHTML = '<div class="no-data">No deposit transactions found</div>';
+      return;
+    }
+    
+    transactionsEl.innerHTML = depositTransactions.map(tx => `
+      <div class="deposit-transaction-item">
+        <div class="deposit-transaction-header">
+          <span class="deposit-transaction-amount">+${(tx.amount / 10000000).toFixed(7)} XFG</span>
+          <span class="deposit-transaction-time">${new Date(tx.timestamp * 1000).toLocaleString()}</span>
+        </div>
+        <div class="deposit-transaction-details">
+          From: ${tx.from_address}<br>
+          Transaction: ${tx.hash}<br>
+          Status: ${tx.is_confirmed ? 'Confirmed' : 'Pending'}
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
 // Initialize when DOM is loaded
 window.addEventListener("DOMContentLoaded", () => {
   walletStatusEl = document.querySelector("#wallet-status");
@@ -259,6 +414,10 @@ window.addEventListener("DOMContentLoaded", () => {
   
   // Set up send transaction button
   document.querySelector("#send-btn")?.addEventListener("click", sendTransaction);
+  
+  // Set up deposit buttons
+  document.querySelector("#copy-address-btn")?.addEventListener("click", copyAddressToClipboard);
+  document.querySelector("#generate-new-address-btn")?.addEventListener("click", generateNewDepositAddress);
   
   // Initialize the app
   init();

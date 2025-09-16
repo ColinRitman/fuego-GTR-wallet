@@ -28,6 +28,9 @@ pub fn run() {
             test_real_cryptonote,
             get_fuego_network_data,
             send_transaction,
+            generate_deposit_address,
+            get_deposit_addresses,
+            get_deposit_transactions,
         ])
         .setup(|_app| {
             info!("Fuego Desktop Wallet initialized successfully");
@@ -235,4 +238,90 @@ async fn send_transaction(
             Err(format!("Failed to send transaction: {}", e))
         }
     }
+}
+
+/// Generate a new deposit address
+#[tauri::command]
+async fn generate_deposit_address(label: Option<String>) -> Result<serde_json::Value, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+    
+    // Try to open existing wallet first
+    let wallet_result = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+    
+    if let Err(e) = wallet_result {
+        return Err(format!("Failed to open/create wallet: {}", e));
+    }
+    
+    // Generate a new deposit address (in real implementation, this would create a subaddress)
+    let main_address = real_wallet.get_address().map_err(|e| e.to_string())?;
+    
+    // For now, we'll use the main address with a label
+    // In a real implementation, this would generate unique subaddresses
+    let deposit_address = format!("{}", main_address);
+    let address_id = uuid::Uuid::new_v4().to_string();
+    
+    log::info!("Generated deposit address: {} with label: {:?}", deposit_address, label);
+    
+    Ok(serde_json::json!({
+        "address": deposit_address,
+        "address_id": address_id,
+        "label": label.unwrap_or_else(|| "Deposit Address".to_string()),
+        "created_at": chrono::Utc::now().timestamp(),
+        "is_main": true
+    }))
+}
+
+/// Get all deposit addresses
+#[tauri::command]
+async fn get_deposit_addresses() -> Result<Vec<serde_json::Value>, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+    
+    // Try to open existing wallet first
+    let wallet_result = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+    
+    if let Err(e) = wallet_result {
+        return Err(format!("Failed to open/create wallet: {}", e));
+    }
+    
+    // Get the main address
+    let main_address = real_wallet.get_address().map_err(|e| e.to_string())?;
+    
+    // Return the main address as a deposit address
+    // In a real implementation, this would return all generated subaddresses
+    Ok(vec![serde_json::json!({
+        "address": main_address,
+        "address_id": "main",
+        "label": "Main Address",
+        "created_at": chrono::Utc::now().timestamp(),
+        "is_main": true,
+        "total_received": 0,
+        "transaction_count": 0
+    })])
+}
+
+/// Get deposit transactions (incoming transactions)
+#[tauri::command]
+async fn get_deposit_transactions(_limit: Option<u64>, _offset: Option<u64>) -> Result<Vec<serde_json::Value>, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+    
+    // Try to open existing wallet first
+    let wallet_result = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+    
+    if let Err(e) = wallet_result {
+        return Err(format!("Failed to open/create wallet: {}", e));
+    }
+    
+    // Connect to Fuego network to get latest transactions
+    let _ = connect_to_fuego_network(&mut real_wallet);
+    
+    // For now, return empty list - real deposit transactions will be loaded from blockchain
+    // TODO: Implement real deposit transaction loading from CryptoNote blockchain
+    // This would scan the blockchain for incoming transactions to our addresses
+    
+    log::info!("Retrieved deposit transactions (currently empty - needs blockchain scanning)");
+    
+    Ok(vec![])
 }

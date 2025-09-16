@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/github/license/fuego-wallet/fuego-GTR-wallet)](LICENSE)
 [![Security](https://img.shields.io/badge/security-audited-green.svg)](SECURITY.md)
 
-**FuegoGTR Wallet** is a modern, secure, and feature-rich desktop cryptocurrency wallet for the Fuego (XFG) blockchain. Built with Tauri, Rust, and modern web technologies, it provides a native desktop experience with advanced security features and comprehensive functionality.
+**FuegoGT Wallet** is a modern, secure, and feature-rich desktop cryptocurrency wallet for the Fuego (XFG) blockchain. Built with Tauri, Rust, and modern web technologies, it provides a native desktop experience with advanced security features and comprehensive functionality.
 
 ## ✨ Features
 
@@ -80,7 +80,7 @@ Visit the [Releases](https://github.com/fuego-wallet/fuego-GTR-wallet/releases) 
 ### Technology Stack
 - **Frontend**: HTML5, CSS3, TypeScript, Modern JavaScript
 - **Backend**: Rust with Tauri framework
-- **CryptoNote Integration**: C++ FFI bindings
+- **Fuego Core Integration**: C++ FFI bindings
 - **UI Framework**: Custom CSS with modern design patterns
 - **Build System**: Tauri CLI with Rust Cargo
 
@@ -190,7 +190,7 @@ Please report security vulnerabilities privately to [security@fuego.network](mai
 
 ## 🌐 Internationalization
 
-FuegoGT Wallet supports 11 languages:
+Fuego GTR Wallet supports 11 languages:
 - English (en)
 - Spanish (es)
 - French (fr)

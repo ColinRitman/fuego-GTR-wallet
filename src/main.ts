@@ -10,7 +10,8 @@ let enhancedWalletInfo: any = null;
 let advancedTransactions: any[] = [];
 let performanceMetrics: any = null;
 let appSettings: any = null;
-let currentLanguage = 'en';
+// Note: currentLanguage managed by backend; keep for future UI language controls
+// const currentLanguage = 'en';
 let availableLanguages: any[] = [];
 let notifications: any[] = [];
 
@@ -212,6 +213,12 @@ async function refresh() {
     currentDepositAddress = walletInfo.address;
     updateDepositAddressDisplay();
   }
+}
+
+// Advanced UI updater (placeholder rendering of enhanced info and notifications)
+function updateAdvancedUI() {
+  // Optionally render enhancedWalletInfo somewhere if needed
+  // For now, keep minimal to avoid DOM elements that don't exist yet
 }
 
 // Test FFI integration

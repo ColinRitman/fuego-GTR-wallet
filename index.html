@@ -62,6 +62,35 @@
           </div>
         </div>
 
+        <div class="receive-section">
+          <h2>Receive XFG</h2>
+          <div class="receive-grid">
+            <div class="receive-left">
+              <div class="current-address">
+                <h3>Current Deposit Address</h3>
+                <div id="deposit-address" class="address">Loading...</div>
+                <div class="receive-actions">
+                  <button id="copy-address-btn" class="btn btn-secondary">Copy Address</button>
+                  <button id="generate-new-address-btn" class="btn btn-accent">Generate New Address</button>
+                </div>
+              </div>
+              <div id="qr-code" class="qr-code">
+                <div class="qr-placeholder">QR Code will appear here</div>
+              </div>
+            </div>
+            <div class="receive-right">
+              <h3>All Deposit Addresses</h3>
+              <div id="deposit-addresses" class="deposit-addresses">
+                Loading addresses...
+              </div>
+              <h3 style="margin-top: 16px;">Deposit Transactions</h3>
+              <div id="deposit-transactions" class="deposit-transactions">
+                Loading deposit transactions...
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="send-section">
           <h2>Send XFG</h2>
           <div class="send-form">

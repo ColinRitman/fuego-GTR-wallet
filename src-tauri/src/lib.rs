@@ -24,7 +24,8 @@ use crate::i18n::{I18nManager, LanguageInfo};
 use crate::optimization::{ResourceMonitor, MemoryOptimization, CPUOptimization, AdvancedCache, ThreadPool, PerformanceProfiler};
 use crate::advanced::{AdvancedWalletManager, AdvancedUIManager, EnhancedWalletInfo, AdvancedTransactionInfo, AdvancedNetworkInfo, AdvancedMiningInfo, AddressInfo, BlockchainExplorer};
 use std::sync::Arc;
-use std::time::Duration;
+use std::sync::Mutex;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::collections::HashMap;
 
 // Global state for security, performance, settings, backup, i18n, optimization, and advanced features
@@ -41,6 +42,29 @@ static THREAD_POOL: std::sync::OnceLock<Arc<ThreadPool>> = std::sync::OnceLock::
 static PERFORMANCE_PROFILER: std::sync::OnceLock<Arc<PerformanceProfiler>> = std::sync::OnceLock::new();
 static ADVANCED_WALLET_MANAGER: std::sync::OnceLock<Arc<AdvancedWalletManager>> = std::sync::OnceLock::new();
 static ADVANCED_UI_MANAGER: std::sync::OnceLock<Arc<AdvancedUIManager>> = std::sync::OnceLock::new();
+
+// Simple in-memory deposit address/transaction stores (placeholder until real subaddress support)
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct DepositAddressRecord {
+    address: String,
+    label: Option<String>,
+    is_main: bool,
+    created_at: u64,
+    transaction_count: u32,
+    total_received: u64,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct DepositTransactionRecord {
+    amount: u64,
+    timestamp: u64,
+    from_address: String,
+    hash: String,
+    is_confirmed: bool,
+}
+
+static DEPOSIT_ADDRESSES: std::sync::OnceLock<Arc<Mutex<Vec<DepositAddressRecord>>>> = std::sync::OnceLock::new();
+static DEPOSIT_TRANSACTIONS: std::sync::OnceLock<Arc<Mutex<Vec<DepositTransactionRecord>>>> = std::sync::OnceLock::new();
 
 /// Initialize the Tauri application
 pub fn run() {
@@ -59,6 +83,15 @@ pub fn run() {
             get_wallet_info,
             get_transactions,
             get_network_status,
+            // Phase 1.3 additions
+            get_enhanced_wallet_info,
+            get_advanced_transactions,
+            get_app_settings,
+            get_available_app_languages,
+            get_notifications,
+            get_deposit_addresses,
+            generate_deposit_address,
+            get_deposit_transactions,
             test_ffi_integration,
             test_real_cryptonote,
             get_fuego_network_data,
@@ -175,6 +208,10 @@ fn initialize_global_state() {
     let advanced_ui_manager = Arc::new(AdvancedUIManager::new());
     ADVANCED_UI_MANAGER.set(advanced_ui_manager).unwrap();
 
+    // Initialize deposit stores
+    DEPOSIT_ADDRESSES.set(Arc::new(Mutex::new(Vec::new()))).ok();
+    DEPOSIT_TRANSACTIONS.set(Arc::new(Mutex::new(Vec::new()))).ok();
+
     info!("Global state initialized successfully");
 }
 
@@ -223,6 +260,210 @@ async fn get_transactions(_limit: Option<u64>, _offset: Option<u64>) -> Result<V
     // For now, return empty list - real transactions will be loaded from blockchain
     // TODO: Implement real transaction loading from CryptoNote blockchain
     Ok(vec![])
+}
+
+/// Get enhanced wallet information for advanced UI (Phase 1.3)
+#[tauri::command]
+async fn get_enhanced_wallet_info() -> Result<serde_json::Value, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    // Open or create wallet
+    let _ = real_wallet
+        .open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    // Attempt network connect (best-effort)
+    let _ = connect_to_fuego_network(&mut real_wallet);
+
+    // Gather info
+    let balance = real_wallet.get_balance().map_err(|e| e.to_string())?;
+    let unlocked_balance = real_wallet.get_unlocked_balance().map_err(|e| e.to_string())?;
+    let address = real_wallet.get_address().map_err(|e| e.to_string())?;
+    let network = real_wallet.get_network_status().unwrap_or_else(|_| serde_json::json!({
+        "is_connected": false,
+        "peer_count": 0,
+        "sync_height": 0,
+        "network_height": 0,
+        "is_syncing": false,
+        "connection_type": "Disconnected"
+    }));
+
+    // Update advanced manager snapshot
+    if let Some(manager) = ADVANCED_WALLET_MANAGER.get().cloned() {
+        manager.update_wallet_info(EnhancedWalletInfo {
+            address: address.clone(),
+            balance,
+            unlocked_balance,
+            locked_balance: balance.saturating_sub(unlocked_balance),
+            total_received: balance,
+            total_sent: 0,
+            transaction_count: 0,
+            is_synced: network.get("is_syncing").and_then(|v| v.as_bool()).map(|s| !s).unwrap_or(false),
+            sync_height: network.get("sync_height").and_then(|v| v.as_u64()).unwrap_or(0),
+            network_height: network.get("network_height").and_then(|v| v.as_u64()).unwrap_or(0),
+            daemon_height: network.get("network_height").and_then(|v| v.as_u64()).unwrap_or(0),
+            is_connected: network.get("is_connected").and_then(|v| v.as_bool()).unwrap_or(false),
+            peer_count: network.get("peer_count").and_then(|v| v.as_u64()).unwrap_or(0) as u32,
+            last_block_time: None,
+            wallet_version: env!("CARGO_PKG_VERSION").to_string(),
+            seed_phrase: None,
+            view_key: None,
+            spend_key: None,
+            restore_height: 0,
+            auto_refresh: true,
+            refresh_from_block_height: 0,
+            subaddress_count: 0,
+            subaddress_lookahead: 0,
+            wallet_creation_time: None,
+            last_backup_time: None,
+            last_sync_time: Some(SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or(Duration::from_secs(0)).as_secs()),
+            sync_speed: 0.0,
+            estimated_sync_time: None,
+        });
+    }
+
+    Ok(serde_json::json!({
+        "address": address,
+        "balance": balance,
+        "unlocked_balance": unlocked_balance,
+        "is_connected": network.get("is_connected").and_then(|v| v.as_bool()).unwrap_or(false),
+        "network": network,
+    }))
+}
+
+/// Get advanced transactions snapshot (placeholder)
+#[tauri::command]
+async fn get_advanced_transactions() -> Result<Vec<serde_json::Value>, String> {
+    if let Some(manager) = ADVANCED_WALLET_MANAGER.get().cloned() {
+        let txs: Vec<AdvancedTransactionInfo> = manager.get_advanced_transactions();
+        let mapped: Vec<serde_json::Value> = txs
+            .into_iter()
+            .map(|t| serde_json::json!({
+                "id": t.id,
+                "hash": t.hash,
+                "amount": t.amount,
+                "fee": t.fee,
+                "timestamp": t.timestamp,
+                "is_confirmed": t.is_confirmed,
+                "address": t.destination_addresses.get(0).cloned().unwrap_or_default()
+            }))
+            .collect();
+        Ok(mapped)
+    } else {
+        Ok(vec![])
+    }
+}
+
+/// Get application settings
+#[tauri::command]
+async fn get_app_settings() -> Result<serde_json::Value, String> {
+    let mgr = SETTINGS_MANAGER.get().ok_or("Settings manager not initialized")?;
+    let settings = mgr.get_settings()?;
+    Ok(serde_json::to_value(settings).map_err(|e| e.to_string())?)
+}
+
+/// Get available application languages
+#[tauri::command]
+async fn get_available_app_languages() -> Result<Vec<LanguageInfo>, String> {
+    let mgr = I18N_MANAGER.get().ok_or("I18n manager not initialized")?;
+    mgr.get_available_languages()
+}
+
+/// Get UI notifications
+#[tauri::command]
+async fn get_notifications() -> Result<Vec<serde_json::Value>, String> {
+    if let Some(ui) = ADVANCED_UI_MANAGER.get().cloned() {
+        let items = ui.get_notifications();
+        let mapped: Vec<serde_json::Value> = items.into_iter().map(|n| serde_json::to_value(n).unwrap_or(serde_json::json!({}))).collect();
+        Ok(mapped)
+    } else {
+        Ok(vec![])
+    }
+}
+
+fn now_ts() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or(Duration::from_secs(0)).as_secs()
+}
+
+fn ensure_main_deposit_address(address: &str) {
+    if let Some(store) = DEPOSIT_ADDRESSES.get() {
+        let mut guard = store.lock().unwrap();
+        if !guard.iter().any(|a| a.is_main) {
+            guard.push(DepositAddressRecord {
+                address: address.to_string(),
+                label: Some("Main Address".to_string()),
+                is_main: true,
+                created_at: now_ts(),
+                transaction_count: 0,
+                total_received: 0,
+            });
+        }
+    }
+}
+
+/// List deposit addresses
+#[tauri::command]
+async fn get_deposit_addresses() -> Result<Vec<serde_json::Value>, String> {
+    // Ensure main address exists
+    let mut real_wallet = RealCryptoNoteWallet::new();
+    let _ = real_wallet
+        .open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+    if let Ok(addr) = real_wallet.get_address() {
+        ensure_main_deposit_address(&addr);
+    }
+
+    let store = DEPOSIT_ADDRESSES.get().ok_or("Deposit store not initialized")?;
+    let guard = store.lock().unwrap();
+    let list: Vec<serde_json::Value> = guard.iter().cloned().map(|r| serde_json::json!({
+        "address": r.address,
+        "label": r.label.unwrap_or_else(|| "".to_string()),
+        "is_main": r.is_main,
+        "created_at": r.created_at,
+        "transaction_count": r.transaction_count,
+        "total_received": r.total_received,
+    })).collect();
+    Ok(list)
+}
+
+/// Generate a new deposit address (placeholder subaddress)
+#[tauri::command]
+async fn generate_deposit_address(label: Option<String>) -> Result<serde_json::Value, String> {
+    let store = DEPOSIT_ADDRESSES.get().ok_or("Deposit store not initialized")?;
+    let mut guard = store.lock().unwrap();
+
+    // Generate pseudo address
+    let rnd = uuid::Uuid::new_v4().simple().to_string();
+    let new_addr = format!("fire{}{}", &rnd[..16], &rnd[16..32]);
+    let record = DepositAddressRecord {
+        address: new_addr.clone(),
+        label: label.clone(),
+        is_main: false,
+        created_at: now_ts(),
+        transaction_count: 0,
+        total_received: 0,
+    };
+    guard.push(record);
+
+    Ok(serde_json::json!({
+        "address": new_addr,
+        "label": label.unwrap_or_default(),
+    }))
+}
+
+/// Get deposit transactions (placeholder)
+#[tauri::command]
+async fn get_deposit_transactions() -> Result<Vec<serde_json::Value>, String> {
+    let store = DEPOSIT_TRANSACTIONS.get().ok_or("Deposit tx store not initialized")?;
+    let guard = store.lock().unwrap();
+    let list: Vec<serde_json::Value> = guard.iter().cloned().map(|t| serde_json::json!({
+        "amount": t.amount,
+        "timestamp": t.timestamp,
+        "from_address": t.from_address,
+        "hash": t.hash,
+        "is_confirmed": t.is_confirmed,
+    })).collect();
+    Ok(list)
 }
 
 /// Get network status (using real CryptoNote)

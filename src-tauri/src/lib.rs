@@ -5,15 +5,30 @@
 
 pub mod crypto;
 pub mod utils;
+pub mod security;
+pub mod performance;
 
 use log::info;
 use crate::crypto::ffi::CryptoNoteFFI;
 use crate::crypto::real_cryptonote::{RealCryptoNoteWallet, connect_to_fuego_network, fetch_fuego_network_data};
+use crate::security::{SecurityManager, SecurityConfig, PasswordValidator, WalletEncryption};
+use crate::performance::{PerformanceMonitor, PerformanceConfig, Cache, BackgroundTaskManager};
+use std::sync::Arc;
+use std::time::Duration;
+
+// Global state for security and performance
+static SECURITY_MANAGER: std::sync::OnceLock<Arc<SecurityManager>> = std::sync::OnceLock::new();
+static PERFORMANCE_MONITOR: std::sync::OnceLock<Arc<PerformanceMonitor>> = std::sync::OnceLock::new();
+static CACHE: std::sync::OnceLock<Arc<Cache<serde_json::Value>>> = std::sync::OnceLock::new();
+static BACKGROUND_TASKS: std::sync::OnceLock<Arc<BackgroundTaskManager>> = std::sync::OnceLock::new();
 
 /// Initialize the Tauri application
 pub fn run() {
     env_logger::init();
     info!("Starting Fuego Desktop Wallet");
+
+    // Initialize global state
+    initialize_global_state();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -31,6 +46,22 @@ pub fn run() {
             get_term_deposits,
             create_term_deposit,
             withdraw_term_deposit,
+            // Security commands
+            authenticate_user,
+            validate_session,
+            lock_session,
+            unlock_session,
+            logout_user,
+            validate_password_strength,
+            encrypt_wallet_data,
+            decrypt_wallet_data,
+            // Performance commands
+            get_performance_metrics,
+            get_cache_stats,
+            clear_cache,
+            get_background_task_status,
+            enable_background_task,
+            disable_background_task,
         ])
         .setup(|_app| {
             info!("Fuego Desktop Wallet initialized successfully");
@@ -38,6 +69,29 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// Initialize global state for security and performance
+fn initialize_global_state() {
+    // Initialize security manager
+    let security_config = SecurityConfig::default();
+    let security_manager = Arc::new(SecurityManager::new(security_config));
+    SECURITY_MANAGER.set(security_manager).unwrap();
+
+    // Initialize performance monitor
+    let performance_config = PerformanceConfig::default();
+    let performance_monitor = Arc::new(PerformanceMonitor::new(performance_config));
+    PERFORMANCE_MONITOR.set(performance_monitor).unwrap();
+
+    // Initialize cache
+    let cache = Arc::new(Cache::new(1000, Duration::from_secs(300)));
+    CACHE.set(cache).unwrap();
+
+    // Initialize background task manager
+    let background_tasks = Arc::new(BackgroundTaskManager::new());
+    BACKGROUND_TASKS.set(background_tasks).unwrap();
+
+    info!("Global state initialized successfully");
 }
 
 /// Get wallet information (using real CryptoNote)
@@ -357,4 +411,196 @@ async fn withdraw_term_deposit(deposit_id: String) -> Result<String, String> {
             Err(format!("Failed to withdraw deposit: {}", e))
         }
     }
+}
+
+// ===== PHASE 2.2: SECURITY & PERFORMANCE COMMANDS =====
+
+/// Authenticate user with password
+#[tauri::command]
+async fn authenticate_user(user_id: String, password: String) -> Result<String, String> {
+    let timer = PERFORMANCE_MONITOR.get().unwrap().start_timing("authenticate_user".to_string());
+    
+    let security_manager = SECURITY_MANAGER.get().unwrap();
+    match security_manager.authenticate(&user_id, &password) {
+        Ok(session_id) => {
+            timer.finish(true);
+            log::info!("User {} authenticated successfully", user_id);
+            Ok(session_id)
+        }
+        Err(e) => {
+            timer.finish(false);
+            log::warn!("Authentication failed for user {}: {}", user_id, e);
+            Err(e)
+        }
+    }
+}
+
+/// Validate user session
+#[tauri::command]
+async fn validate_session(session_id: String) -> Result<String, String> {
+    let timer = PERFORMANCE_MONITOR.get().unwrap().start_timing("validate_session".to_string());
+    
+    let security_manager = SECURITY_MANAGER.get().unwrap();
+    match security_manager.validate_session(&session_id) {
+        Ok(user_id) => {
+            security_manager.update_session_activity(&session_id).ok();
+            timer.finish(true);
+            Ok(user_id)
+        }
+        Err(e) => {
+            timer.finish(false);
+            Err(e)
+        }
+    }
+}
+
+/// Lock session for sensitive operations
+#[tauri::command]
+async fn lock_session(session_id: String) -> Result<(), String> {
+    let security_manager = SECURITY_MANAGER.get().unwrap();
+    security_manager.lock_session(&session_id)
+}
+
+/// Unlock session with password
+#[tauri::command]
+async fn unlock_session(session_id: String, password: String) -> Result<(), String> {
+    let security_manager = SECURITY_MANAGER.get().unwrap();
+    security_manager.unlock_session(&session_id, &password)
+}
+
+/// Logout user and destroy session
+#[tauri::command]
+async fn logout_user(session_id: String) -> Result<(), String> {
+    let security_manager = SECURITY_MANAGER.get().unwrap();
+    security_manager.logout(&session_id)
+}
+
+/// Validate password strength
+#[tauri::command]
+async fn validate_password_strength(password: String) -> Result<serde_json::Value, String> {
+    match PasswordValidator::validate_strength(&password) {
+        Ok(_) => {
+            let score = PasswordValidator::calculate_strength_score(&password);
+            Ok(serde_json::json!({
+                "valid": true,
+                "score": score,
+                "strength": match score {
+                    0..=30 => "weak",
+                    31..=60 => "medium",
+                    61..=80 => "strong",
+                    81..=100 => "very_strong",
+                    _ => "unknown"
+                }
+            }))
+        }
+        Err(e) => {
+            let score = PasswordValidator::calculate_strength_score(&password);
+            Ok(serde_json::json!({
+                "valid": false,
+                "error": e,
+                "score": score,
+                "strength": "weak"
+            }))
+        }
+    }
+}
+
+/// Encrypt wallet data
+#[tauri::command]
+async fn encrypt_wallet_data(data: String, password: String) -> Result<String, String> {
+    WalletEncryption::encrypt_data(&data, &password)
+}
+
+/// Decrypt wallet data
+#[tauri::command]
+async fn decrypt_wallet_data(encrypted_data: String, password: String) -> Result<String, String> {
+    WalletEncryption::decrypt_data(&encrypted_data, &password)
+}
+
+/// Get performance metrics
+#[tauri::command]
+async fn get_performance_metrics(operation_name: Option<String>) -> Result<serde_json::Value, String> {
+    let monitor = PERFORMANCE_MONITOR.get().unwrap();
+    
+    if let Some(name) = operation_name {
+        match monitor.get_average_performance(&name) {
+            Some(avg_perf) => Ok(serde_json::json!({
+                "operation_name": avg_perf.operation_name,
+                "average_duration_ms": avg_perf.average_duration_ms,
+                "average_memory_mb": avg_perf.average_memory_mb,
+                "success_rate": avg_perf.success_rate,
+                "total_calls": avg_perf.total_calls
+            })),
+            None => Ok(serde_json::json!({
+                "error": "No metrics found for operation"
+            }))
+        }
+    } else {
+        let metrics = monitor.get_metrics(None);
+        Ok(serde_json::json!({
+            "total_operations": metrics.len(),
+            "operations": metrics
+        }))
+    }
+}
+
+/// Get cache statistics
+#[tauri::command]
+async fn get_cache_stats() -> Result<serde_json::Value, String> {
+    let cache = CACHE.get().unwrap();
+    let stats = cache.stats();
+    Ok(serde_json::json!({
+        "total_entries": stats.total_entries,
+        "expired_entries": stats.expired_entries,
+        "active_entries": stats.active_entries,
+        "max_size": stats.max_size,
+        "hit_rate": if stats.total_entries > 0 {
+            (stats.active_entries as f64 / stats.total_entries as f64) * 100.0
+        } else {
+            0.0
+        }
+    }))
+}
+
+/// Clear cache
+#[tauri::command]
+async fn clear_cache() -> Result<(), String> {
+    let cache = CACHE.get().unwrap();
+    cache.clear();
+    log::info!("Cache cleared");
+    Ok(())
+}
+
+/// Get background task status
+#[tauri::command]
+async fn get_background_task_status(task_name: String) -> Result<serde_json::Value, String> {
+    let task_manager = BACKGROUND_TASKS.get().unwrap();
+    
+    match task_manager.get_task_status(&task_name) {
+        Some(status) => Ok(serde_json::json!({
+            "name": status.name,
+            "enabled": status.enabled,
+            "last_run": status.last_run.elapsed().as_secs(),
+            "next_run_in": status.next_run_in.as_secs()
+        })),
+        None => Err("Task not found".to_string())
+    }
+}
+
+/// Enable background task
+#[tauri::command]
+async fn enable_background_task(task_name: String) -> Result<(), String> {
+    let task_manager = BACKGROUND_TASKS.get().unwrap();
+    task_manager.set_task_enabled(&task_name, true);
+    log::info!("Background task {} enabled", task_name);
+    Ok(())
+}
+
+/// Disable background task
+#[tauri::command]
+async fn disable_background_task(task_name: String) -> Result<(), String> {
+    let task_manager = BACKGROUND_TASKS.get().unwrap();
+    task_manager.set_task_enabled(&task_name, false);
+    log::info!("Background task {} disabled", task_name);
+    Ok(())
 }

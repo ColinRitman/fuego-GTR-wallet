@@ -24,7 +24,6 @@ use crate::i18n::{I18nManager, LanguageInfo};
 use crate::optimization::{ResourceMonitor, MemoryOptimization, CPUOptimization, AdvancedCache, ThreadPool, PerformanceProfiler};
 use crate::advanced::{AdvancedWalletManager, AdvancedUIManager, EnhancedWalletInfo, AdvancedTransactionInfo, AdvancedNetworkInfo, AdvancedMiningInfo, AddressInfo, BlockchainExplorer};
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::collections::HashMap;
 
@@ -43,28 +42,6 @@ static PERFORMANCE_PROFILER: std::sync::OnceLock<Arc<PerformanceProfiler>> = std
 static ADVANCED_WALLET_MANAGER: std::sync::OnceLock<Arc<AdvancedWalletManager>> = std::sync::OnceLock::new();
 static ADVANCED_UI_MANAGER: std::sync::OnceLock<Arc<AdvancedUIManager>> = std::sync::OnceLock::new();
 
-// Simple in-memory deposit address/transaction stores (placeholder until real subaddress support)
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-struct DepositAddressRecord {
-    address: String,
-    label: Option<String>,
-    is_main: bool,
-    created_at: u64,
-    transaction_count: u32,
-    total_received: u64,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-struct DepositTransactionRecord {
-    amount: u64,
-    timestamp: u64,
-    from_address: String,
-    hash: String,
-    is_confirmed: bool,
-}
-
-static DEPOSIT_ADDRESSES: std::sync::OnceLock<Arc<Mutex<Vec<DepositAddressRecord>>>> = std::sync::OnceLock::new();
-static DEPOSIT_TRANSACTIONS: std::sync::OnceLock<Arc<Mutex<Vec<DepositTransactionRecord>>>> = std::sync::OnceLock::new();
 
 /// Initialize the Tauri application
 pub fn run() {
@@ -89,9 +66,6 @@ pub fn run() {
             get_app_settings,
             get_available_app_languages,
             get_notifications,
-            get_deposit_addresses,
-            generate_deposit_address,
-            get_deposit_transactions,
             test_ffi_integration,
             test_real_cryptonote,
             get_fuego_network_data,
@@ -207,10 +181,6 @@ fn initialize_global_state() {
     
     let advanced_ui_manager = Arc::new(AdvancedUIManager::new());
     ADVANCED_UI_MANAGER.set(advanced_ui_manager).unwrap();
-
-    // Initialize deposit stores
-    DEPOSIT_ADDRESSES.set(Arc::new(Mutex::new(Vec::new()))).ok();
-    DEPOSIT_TRANSACTIONS.set(Arc::new(Mutex::new(Vec::new()))).ok();
 
     info!("Global state initialized successfully");
 }

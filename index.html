@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fuego Desktop Wallet</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+
+  <body>
+    <div class="app">
+      <header class="header">
+        <div class="header-content">
+          <h1>🔥 Fuego Desktop Wallet</h1>
+          <div class="header-actions">
+            <button id="refresh-btn" class="btn btn-secondary">Refresh</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="main">
+        <div class="wallet-overview">
+          <div class="wallet-status">
+            <h2>Wallet Status</h2>
+            <div id="wallet-status" class="status">Loading...</div>
+          </div>
+
+          <div class="balance-section">
+            <h2>Balance</h2>
+            <div id="balance" class="balance">0.0000 FUEGO</div>
+          </div>
+
+          <div class="address-section">
+            <h2>Address</h2>
+            <div id="address" class="address">Loading...</div>
+          </div>
+        </div>
+
+        <div class="network-status">
+          <h2>Network Status</h2>
+          <div id="network-status" class="network-info">Loading...</div>
+        </div>
+
+        <div class="transactions-section">
+          <h2>Recent Transactions</h2>
+          <div id="transactions" class="transactions-list">
+            Loading transactions...
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

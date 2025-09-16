@@ -27,6 +27,7 @@ pub fn run() {
             test_ffi_integration,
             test_real_cryptonote,
             get_fuego_network_data,
+            send_transaction,
         ])
         .setup(|_app| {
             info!("Fuego Desktop Wallet initialized successfully");
@@ -195,6 +196,43 @@ async fn get_fuego_network_data() -> Result<serde_json::Value, String> {
         Err(e) => {
             log::error!("Failed to fetch Fuego network data: {}", e);
             Err(format!("Failed to fetch network data: {}", e))
+        }
+    }
+}
+
+/// Send a transaction
+#[tauri::command]
+async fn send_transaction(
+    recipient: String,
+    amount: u64,
+    payment_id: Option<String>,
+    mixin: u64,
+) -> Result<String, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+    
+    // Try to open existing wallet first
+    let wallet_result = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+    
+    if let Err(e) = wallet_result {
+        return Err(format!("Failed to open/create wallet: {}", e));
+    }
+    
+    // Connect to Fuego network
+    if let Err(e) = connect_to_fuego_network(&mut real_wallet) {
+        log::warn!("Failed to connect to Fuego network: {}", e);
+        // Continue without network connection
+    }
+    
+    // Send transaction
+    match real_wallet.send_transaction(&recipient, amount, payment_id.as_deref(), mixin) {
+        Ok(tx_hash) => {
+            log::info!("Transaction sent successfully: {}", tx_hash);
+            Ok(tx_hash)
+        }
+        Err(e) => {
+            log::error!("Failed to send transaction: {}", e);
+            Err(format!("Failed to send transaction: {}", e))
         }
     }
 }

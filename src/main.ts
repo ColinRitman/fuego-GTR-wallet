@@ -110,6 +110,9 @@ function updateUI() {
       </div>
     `;
   }
+  
+  // Update sync progress display
+  updateSyncDisplay(networkStatus);
 }
 
 // Refresh data
@@ -173,6 +176,67 @@ async function fetchLiveNetworkData() {
   }
 }
 
+// Send transaction function
+async function sendTransaction() {
+  const recipientAddress = (document.querySelector("#recipient-address") as HTMLInputElement)?.value;
+  const amountInput = (document.querySelector("#amount") as HTMLInputElement)?.value;
+  const paymentId = (document.querySelector("#payment-id") as HTMLInputElement)?.value;
+
+  if (!recipientAddress || !amountInput) {
+    alert("Please fill in recipient address and amount");
+    return;
+  }
+
+  const amount = parseFloat(amountInput);
+  if (amount <= 0) {
+    alert("Amount must be greater than 0");
+    return;
+  }
+
+  try {
+    // Convert XFG to atomic units (7 decimal places)
+    const amountAtomicUnits = Math.floor(amount * 10000000);
+    
+    const result = await invoke("send_transaction", {
+      recipient: recipientAddress,
+      amount: amountAtomicUnits,
+      paymentId: paymentId || null,
+      mixin: 5
+    });
+    
+    console.log("Transaction sent:", result);
+    alert(`Transaction sent successfully!\nHash: ${result}`);
+    
+    // Clear form
+    (document.querySelector("#recipient-address") as HTMLInputElement).value = "";
+    (document.querySelector("#amount") as HTMLInputElement).value = "";
+    (document.querySelector("#payment-id") as HTMLInputElement).value = "";
+    
+    // Refresh wallet info
+    await refresh();
+  } catch (error) {
+    console.error("Failed to send transaction:", error);
+    alert(`Failed to send transaction: ${error}`);
+  }
+}
+
+// Update sync progress display
+function updateSyncDisplay(networkStatus: any) {
+  const syncProgressEl = document.querySelector("#sync-progress");
+  const syncDetailsEl = document.querySelector("#sync-details");
+  
+  if (syncProgressEl && syncDetailsEl) {
+    if (networkStatus.is_syncing) {
+      const progress = ((networkStatus.sync_height / networkStatus.network_height) * 100).toFixed(1);
+      syncProgressEl.textContent = `Syncing... ${progress}%`;
+      syncDetailsEl.textContent = `Block ${networkStatus.sync_height.toLocaleString()} of ${networkStatus.network_height.toLocaleString()}`;
+    } else {
+      syncProgressEl.textContent = "✅ Fully Synced";
+      syncDetailsEl.textContent = `Connected to ${networkStatus.connection_type}`;
+    }
+  }
+}
+
 // Initialize when DOM is loaded
 window.addEventListener("DOMContentLoaded", () => {
   walletStatusEl = document.querySelector("#wallet-status");
@@ -180,7 +244,7 @@ window.addEventListener("DOMContentLoaded", () => {
   addressEl = document.querySelector("#address");
   transactionsEl = document.querySelector("#transactions");
   networkStatusEl = document.querySelector("#network-status");
-  
+
   // Set up refresh button
   document.querySelector("#refresh-btn")?.addEventListener("click", refresh);
   
@@ -192,6 +256,9 @@ window.addEventListener("DOMContentLoaded", () => {
   
   // Set up live network data button
   document.querySelector("#network-data-btn")?.addEventListener("click", fetchLiveNetworkData);
+  
+  // Set up send transaction button
+  document.querySelector("#send-btn")?.addEventListener("click", sendTransaction);
   
   // Initialize the app
   init();

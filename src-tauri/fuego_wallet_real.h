@@ -20,7 +20,16 @@ extern "C" {
 typedef void* FuegoWallet;
 typedef void* TransactionResult;
 typedef void* TransactionList;
-typedef void* NetworkStatus;
+
+// Network status structure
+typedef struct {
+    bool is_connected;
+    uint64_t peer_count;
+    uint64_t sync_height;
+    uint64_t network_height;
+    bool is_syncing;
+    char connection_type[256];
+} NetworkStatus;
 
 // Wallet creation and management
 FuegoWallet fuego_wallet_create(
@@ -77,7 +86,7 @@ NetworkStatus fuego_wallet_get_network_status(FuegoWallet wallet);
 // Utility functions
 void fuego_wallet_free_string(char* s);
 void fuego_wallet_free_transactions(TransactionList txs);
-void fuego_wallet_free_network_status(NetworkStatus status);
+void fuego_wallet_free_network_status(NetworkStatus* status);
 
 #ifdef __cplusplus
 }

@@ -119,6 +119,20 @@ async function refresh() {
   updateUI();
 }
 
+// Test FFI integration
+async function testFFI() {
+  try {
+    const result = await invoke("test_ffi_integration");
+    console.log("FFI Test Result:", result);
+    
+    // Show result in a simple alert for now
+    alert(`FFI Test Successful!\n\nWallet Address: ${result.wallet.address}\nBalance: ${result.wallet.balance}\nTransaction Hash: ${result.transaction.hash}`);
+  } catch (error) {
+    console.error("FFI Test Failed:", error);
+    alert(`FFI Test Failed: ${error}`);
+  }
+}
+
 // Initialize when DOM is loaded
 window.addEventListener("DOMContentLoaded", () => {
   walletStatusEl = document.querySelector("#wallet-status");
@@ -129,6 +143,9 @@ window.addEventListener("DOMContentLoaded", () => {
   
   // Set up refresh button
   document.querySelector("#refresh-btn")?.addEventListener("click", refresh);
+  
+  // Set up FFI test button
+  document.querySelector("#test-ffi-btn")?.addEventListener("click", testFFI);
   
   // Initialize the app
   init();

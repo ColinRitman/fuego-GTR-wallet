@@ -23,6 +23,7 @@ pub fn run() {
             get_wallet_info,
             get_transactions,
             get_network_status,
+            test_ffi_integration,
         ])
         .setup(|_app| {
             info!("Fuego Desktop Wallet initialized successfully");
@@ -96,5 +97,43 @@ async fn get_network_status() -> Result<serde_json::Value, String> {
         "network_height": 1000005,
         "is_syncing": true,
         "connection_type": "RPC"
+    }))
+}
+
+/// Test FFI integration
+#[tauri::command]
+async fn test_ffi_integration() -> Result<serde_json::Value, String> {
+    let mut ffi = CryptoNoteFFI::new();
+    
+    // Test wallet creation
+    let create_result = ffi.create_wallet("test_password", "/tmp/test.wallet", None, 0);
+    if create_result.is_err() {
+        return Err(format!("FFI wallet creation failed: {:?}", create_result.err()));
+    }
+    
+    // Test wallet operations
+    let balance = ffi.get_balance().map_err(|e| e.to_string())?;
+    let unlocked_balance = ffi.get_unlocked_balance().map_err(|e| e.to_string())?;
+    let address = ffi.get_address().map_err(|e| e.to_string())?;
+    let is_open = ffi.is_open();
+    
+    // Test transaction sending
+    let tx_result = ffi.send_transaction("FUEGO9876543210fedcba", 100000000, None, 5);
+    if tx_result.is_err() {
+        return Err(format!("FFI transaction failed: {:?}", tx_result.err()));
+    }
+    
+    Ok(serde_json::json!({
+        "status": "success",
+        "message": "FFI integration working correctly",
+        "wallet": {
+            "is_open": is_open,
+            "balance": balance,
+            "unlocked_balance": unlocked_balance,
+            "address": address
+        },
+        "transaction": {
+            "hash": tx_result.unwrap()
+        }
     }))
 }

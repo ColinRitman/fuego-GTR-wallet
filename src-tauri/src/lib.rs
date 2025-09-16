@@ -3,7 +3,6 @@
 
 //! Fuego Desktop Wallet - Tauri Backend
 
-use tauri::Manager;
 use log::info;
 
 /// Initialize the Tauri application
@@ -21,7 +20,7 @@ pub fn run() {
             get_transactions,
             get_network_status,
         ])
-        .setup(|app| {
+        .setup(|_app| {
             info!("Fuego Desktop Wallet initialized successfully");
             Ok(())
         })
@@ -43,7 +42,7 @@ async fn get_wallet_info() -> Result<serde_json::Value, String> {
 
 /// Get transactions (mock implementation)
 #[tauri::command]
-async fn get_transactions(limit: Option<u64>, offset: Option<u64>) -> Result<Vec<serde_json::Value>, String> {
+async fn get_transactions(_limit: Option<u64>, _offset: Option<u64>) -> Result<Vec<serde_json::Value>, String> {
     Ok(vec![
         serde_json::json!({
             "id": "tx_1",

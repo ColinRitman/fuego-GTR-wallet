@@ -26,6 +26,7 @@ This is a complete rewrite of the Fuego Desktop Wallet using modern technologies
 - [x] Basic Rust backend structure
 - [x] Mock wallet operations
 - [x] Basic frontend interface
+- [x] GitHub repository setup
 - [ ] CryptoNote C++ integration via FFI
 - [ ] Real wallet operations
 

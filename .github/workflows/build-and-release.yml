@@ -43,7 +43,7 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: fuego-tauri/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -235,7 +235,7 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: fuego-tauri/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable

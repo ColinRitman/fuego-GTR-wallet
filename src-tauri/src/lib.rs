@@ -11,6 +11,7 @@ pub mod settings;
 pub mod backup;
 pub mod i18n;
 pub mod optimization;
+pub mod advanced;
 
 use log::info;
 use crate::crypto::ffi::CryptoNoteFFI;
@@ -21,11 +22,12 @@ use crate::settings::{SettingsManager, AppSettings};
 use crate::backup::{BackupManager, BackupData, BackupType};
 use crate::i18n::{I18nManager, LanguageInfo};
 use crate::optimization::{ResourceMonitor, MemoryOptimization, CPUOptimization, AdvancedCache, ThreadPool, PerformanceProfiler};
+use crate::advanced::{AdvancedWalletManager, AdvancedUIManager, EnhancedWalletInfo, AdvancedTransactionInfo, AdvancedNetworkInfo, AdvancedMiningInfo, AddressInfo, BlockchainExplorer};
 use std::sync::Arc;
 use std::time::Duration;
 use std::collections::HashMap;
 
-// Global state for security, performance, settings, backup, i18n, and optimization
+// Global state for security, performance, settings, backup, i18n, optimization, and advanced features
 static SECURITY_MANAGER: std::sync::OnceLock<Arc<SecurityManager>> = std::sync::OnceLock::new();
 static PERFORMANCE_MONITOR: std::sync::OnceLock<Arc<PerformanceMonitor>> = std::sync::OnceLock::new();
 static CACHE: std::sync::OnceLock<Arc<Cache<serde_json::Value>>> = std::sync::OnceLock::new();
@@ -37,6 +39,8 @@ static RESOURCE_MONITOR: std::sync::OnceLock<Arc<ResourceMonitor>> = std::sync::
 static OPTIMIZATION_CACHE: std::sync::OnceLock<Arc<AdvancedCache<String, String>>> = std::sync::OnceLock::new();
 static THREAD_POOL: std::sync::OnceLock<Arc<ThreadPool>> = std::sync::OnceLock::new();
 static PERFORMANCE_PROFILER: std::sync::OnceLock<Arc<PerformanceProfiler>> = std::sync::OnceLock::new();
+static ADVANCED_WALLET_MANAGER: std::sync::OnceLock<Arc<AdvancedWalletManager>> = std::sync::OnceLock::new();
+static ADVANCED_UI_MANAGER: std::sync::OnceLock<Arc<AdvancedUIManager>> = std::sync::OnceLock::new();
 
 /// Initialize the Tauri application
 pub fn run() {
@@ -101,6 +105,27 @@ pub fn run() {
             get_performance_profile,
             start_performance_profiling,
             stop_performance_profiling,
+            // Advanced features commands
+            get_enhanced_wallet_info,
+            get_advanced_transactions,
+            get_advanced_network_info,
+            get_advanced_mining_info,
+            get_address_info,
+            get_blockchain_explorers,
+            get_operation_history,
+            start_operation_tracking,
+            end_operation_tracking,
+            update_operation_progress,
+            get_ui_components,
+            add_ui_component,
+            update_ui_component,
+            remove_ui_component,
+            get_ui_themes,
+            set_ui_theme,
+            get_notifications,
+            add_notification,
+            mark_notification_read,
+            dismiss_notification,
         ])
         .setup(|_app| {
             info!("Fuego Desktop Wallet initialized successfully");
@@ -186,6 +211,13 @@ fn initialize_global_state() {
     
     let performance_profiler = Arc::new(PerformanceProfiler::new());
     PERFORMANCE_PROFILER.set(performance_profiler).unwrap();
+
+    // Initialize advanced components
+    let advanced_wallet_manager = Arc::new(AdvancedWalletManager::new());
+    ADVANCED_WALLET_MANAGER.set(advanced_wallet_manager).unwrap();
+    
+    let advanced_ui_manager = Arc::new(AdvancedUIManager::new());
+    ADVANCED_UI_MANAGER.set(advanced_ui_manager).unwrap();
 
     info!("Global state initialized successfully");
 }
@@ -1123,4 +1155,152 @@ async fn start_performance_profiling() -> Result<String, String> {
 async fn stop_performance_profiling() -> Result<String, String> {
     // Profiling is automatically stopped when operations complete
     Ok("Performance profiling stopped successfully".to_string())
+}
+
+// ===== PHASE 3.3: ADVANCED FEATURES & INTEGRATION COMMANDS =====
+
+#[tauri::command]
+async fn get_enhanced_wallet_info() -> Result<serde_json::Value, String> {
+    let manager = ADVANCED_WALLET_MANAGER.get().unwrap();
+    match manager.get_enhanced_wallet_info() {
+        Some(info) => Ok(serde_json::to_value(info).unwrap_or_default()),
+        None => Ok(serde_json::json!({})),
+    }
+}
+
+#[tauri::command]
+async fn get_advanced_transactions() -> Result<Vec<serde_json::Value>, String> {
+    let manager = ADVANCED_WALLET_MANAGER.get().unwrap();
+    let transactions = manager.get_advanced_transactions();
+    Ok(transactions.into_iter().map(|t| serde_json::to_value(t).unwrap_or_default()).collect())
+}
+
+#[tauri::command]
+async fn get_advanced_network_info() -> Result<serde_json::Value, String> {
+    let manager = ADVANCED_WALLET_MANAGER.get().unwrap();
+    match manager.get_network_info() {
+        Some(info) => Ok(serde_json::to_value(info).unwrap_or_default()),
+        None => Ok(serde_json::json!({})),
+    }
+}
+
+#[tauri::command]
+async fn get_advanced_mining_info() -> Result<serde_json::Value, String> {
+    let manager = ADVANCED_WALLET_MANAGER.get().unwrap();
+    match manager.get_mining_info() {
+        Some(info) => Ok(serde_json::to_value(info).unwrap_or_default()),
+        None => Ok(serde_json::json!({})),
+    }
+}
+
+#[tauri::command]
+async fn get_address_info() -> Result<Vec<serde_json::Value>, String> {
+    let manager = ADVANCED_WALLET_MANAGER.get().unwrap();
+    let addresses = manager.get_addresses();
+    Ok(addresses.into_iter().map(|a| serde_json::to_value(a).unwrap_or_default()).collect())
+}
+
+#[tauri::command]
+async fn get_blockchain_explorers() -> Result<Vec<serde_json::Value>, String> {
+    let manager = ADVANCED_WALLET_MANAGER.get().unwrap();
+    let explorers = manager.get_explorers();
+    Ok(explorers.into_iter().map(|e| serde_json::to_value(e).unwrap_or_default()).collect())
+}
+
+#[tauri::command]
+async fn get_operation_history() -> Result<Vec<serde_json::Value>, String> {
+    let manager = ADVANCED_WALLET_MANAGER.get().unwrap();
+    let operations = manager.get_operation_history();
+    Ok(operations.into_iter().map(|o| serde_json::to_value(o).unwrap_or_default()).collect())
+}
+
+#[tauri::command]
+async fn start_operation_tracking(operation_type: String) -> Result<String, String> {
+    let manager = ADVANCED_WALLET_MANAGER.get().unwrap();
+    let operation_id = manager.start_operation(&operation_type);
+    Ok(operation_id)
+}
+
+#[tauri::command]
+async fn end_operation_tracking(operation_id: String, status: String, result: Option<String>, error: Option<String>) -> Result<String, String> {
+    let manager = ADVANCED_WALLET_MANAGER.get().unwrap();
+    manager.end_operation(&operation_id, &status, result, error);
+    Ok("Operation tracking ended successfully".to_string())
+}
+
+#[tauri::command]
+async fn update_operation_progress(operation_id: String, progress: f64) -> Result<String, String> {
+    let manager = ADVANCED_WALLET_MANAGER.get().unwrap();
+    manager.update_operation_progress(&operation_id, progress);
+    Ok("Operation progress updated successfully".to_string())
+}
+
+#[tauri::command]
+async fn get_ui_components() -> Result<HashMap<String, serde_json::Value>, String> {
+    let manager = ADVANCED_UI_MANAGER.get().unwrap();
+    // This would need to be implemented to return all components
+    Ok(HashMap::new())
+}
+
+#[tauri::command]
+async fn add_ui_component(component: crate::advanced::UIComponent) -> Result<String, String> {
+    let manager = ADVANCED_UI_MANAGER.get().unwrap();
+    manager.add_component(component);
+    Ok("UI component added successfully".to_string())
+}
+
+#[tauri::command]
+async fn update_ui_component(id: String, component: crate::advanced::UIComponent) -> Result<String, String> {
+    let manager = ADVANCED_UI_MANAGER.get().unwrap();
+    manager.update_component(&id, component);
+    Ok("UI component updated successfully".to_string())
+}
+
+#[tauri::command]
+async fn remove_ui_component(id: String) -> Result<String, String> {
+    let manager = ADVANCED_UI_MANAGER.get().unwrap();
+    manager.remove_component(&id);
+    Ok("UI component removed successfully".to_string())
+}
+
+#[tauri::command]
+async fn get_ui_themes() -> Result<Vec<serde_json::Value>, String> {
+    let manager = ADVANCED_UI_MANAGER.get().unwrap();
+    let themes = manager.get_themes();
+    Ok(themes.into_iter().map(|t| serde_json::to_value(t).unwrap_or_default()).collect())
+}
+
+#[tauri::command]
+async fn set_ui_theme(theme_name: String) -> Result<String, String> {
+    let manager = ADVANCED_UI_MANAGER.get().unwrap();
+    manager.set_theme(&theme_name);
+    Ok("UI theme set successfully".to_string())
+}
+
+#[tauri::command]
+async fn get_notifications() -> Result<Vec<serde_json::Value>, String> {
+    let manager = ADVANCED_UI_MANAGER.get().unwrap();
+    let notifications = manager.get_notifications();
+    Ok(notifications.into_iter().map(|n| serde_json::to_value(n).unwrap_or_default()).collect())
+}
+
+#[tauri::command]
+async fn add_notification(notification: crate::advanced::UINotification) -> Result<String, String> {
+    let manager = ADVANCED_UI_MANAGER.get().unwrap();
+    manager.add_notification(notification);
+    Ok("Notification added successfully".to_string())
+}
+
+#[tauri::command]
+async fn mark_notification_read(notification_id: String) -> Result<String, String> {
+    let manager = ADVANCED_UI_MANAGER.get().unwrap();
+    manager.mark_notification_read(&notification_id);
+    Ok("Notification marked as read".to_string())
+}
+
+#[tauri::command]
+async fn dismiss_notification(notification_id: String) -> Result<String, String> {
+    let manager = ADVANCED_UI_MANAGER.get().unwrap();
+    manager.dismiss_notification(&notification_id);
+    Ok("Notification dismissed".to_string())
 }

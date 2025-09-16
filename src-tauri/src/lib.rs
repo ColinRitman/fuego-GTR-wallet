@@ -3,7 +3,11 @@
 
 //! Fuego Desktop Wallet - Tauri Backend
 
+pub mod crypto;
+pub mod utils;
+
 use log::info;
+use crate::crypto::ffi::CryptoNoteFFI;
 
 /// Initialize the Tauri application
 pub fn run() {
@@ -28,14 +32,25 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-/// Get wallet information (mock implementation)
+/// Get wallet information (using FFI)
 #[tauri::command]
 async fn get_wallet_info() -> Result<serde_json::Value, String> {
+    let mut ffi = CryptoNoteFFI::new();
+    
+    // For now, create a mock wallet to demonstrate FFI integration
+    if let Err(e) = ffi.create_wallet("test_password", "/tmp/test.wallet", None, 0) {
+        return Err(format!("Failed to create wallet: {}", e));
+    }
+    
+    let balance = ffi.get_balance().map_err(|e| e.to_string())?;
+    let unlocked_balance = ffi.get_unlocked_balance().map_err(|e| e.to_string())?;
+    let address = ffi.get_address().map_err(|e| e.to_string())?;
+    
     Ok(serde_json::json!({
-        "address": "FUEGO1234567890abcdef",
-        "balance": 1000000000,
-        "unlocked_balance": 1000000000,
-        "is_open": true,
+        "address": address,
+        "balance": balance,
+        "unlocked_balance": unlocked_balance,
+        "is_open": ffi.is_open(),
         "is_encrypted": true
     }))
 }

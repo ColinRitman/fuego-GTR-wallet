@@ -10,6 +10,7 @@ pub mod performance;
 pub mod settings;
 pub mod backup;
 pub mod i18n;
+pub mod optimization;
 
 use log::info;
 use crate::crypto::ffi::CryptoNoteFFI;
@@ -19,11 +20,12 @@ use crate::performance::{PerformanceMonitor, PerformanceConfig, Cache, Backgroun
 use crate::settings::{SettingsManager, AppSettings};
 use crate::backup::{BackupManager, BackupData, BackupType};
 use crate::i18n::{I18nManager, LanguageInfo};
+use crate::optimization::{ResourceMonitor, MemoryOptimization, CPUOptimization, AdvancedCache, ThreadPool, PerformanceProfiler};
 use std::sync::Arc;
 use std::time::Duration;
 use std::collections::HashMap;
 
-// Global state for security, performance, settings, backup, and i18n
+// Global state for security, performance, settings, backup, i18n, and optimization
 static SECURITY_MANAGER: std::sync::OnceLock<Arc<SecurityManager>> = std::sync::OnceLock::new();
 static PERFORMANCE_MONITOR: std::sync::OnceLock<Arc<PerformanceMonitor>> = std::sync::OnceLock::new();
 static CACHE: std::sync::OnceLock<Arc<Cache<serde_json::Value>>> = std::sync::OnceLock::new();
@@ -31,6 +33,10 @@ static BACKGROUND_TASKS: std::sync::OnceLock<Arc<BackgroundTaskManager>> = std::
 static SETTINGS_MANAGER: std::sync::OnceLock<Arc<SettingsManager>> = std::sync::OnceLock::new();
 static BACKUP_MANAGER: std::sync::OnceLock<Arc<BackupManager>> = std::sync::OnceLock::new();
 static I18N_MANAGER: std::sync::OnceLock<Arc<I18nManager>> = std::sync::OnceLock::new();
+static RESOURCE_MONITOR: std::sync::OnceLock<Arc<ResourceMonitor>> = std::sync::OnceLock::new();
+static OPTIMIZATION_CACHE: std::sync::OnceLock<Arc<AdvancedCache<String, String>>> = std::sync::OnceLock::new();
+static THREAD_POOL: std::sync::OnceLock<Arc<ThreadPool>> = std::sync::OnceLock::new();
+static PERFORMANCE_PROFILER: std::sync::OnceLock<Arc<PerformanceProfiler>> = std::sync::OnceLock::new();
 
 /// Initialize the Tauri application
 pub fn run() {
@@ -85,6 +91,16 @@ pub fn run() {
             stop_mining,
             get_mining_info,
             disconnect_wallet,
+            // Performance optimization commands
+            get_resource_metrics,
+            start_resource_monitoring,
+            stop_resource_monitoring,
+            optimize_memory,
+            get_cache_performance,
+            clear_optimization_cache,
+            get_performance_profile,
+            start_performance_profiling,
+            stop_performance_profiling,
         ])
         .setup(|_app| {
             info!("Fuego Desktop Wallet initialized successfully");
@@ -139,6 +155,37 @@ fn initialize_global_state() {
     // Initialize i18n manager
     let i18n_manager = Arc::new(I18nManager::new());
     I18N_MANAGER.set(i18n_manager).unwrap();
+
+    // Initialize optimization components
+    let memory_opt = MemoryOptimization {
+        max_cache_size: 1000,
+        cache_cleanup_interval: Duration::from_secs(300),
+        memory_threshold: 1024 * 1024 * 100, // 100 MB
+        gc_interval: Duration::from_secs(60),
+        compression_enabled: true,
+        lazy_loading: true,
+    };
+    
+    let cpu_opt = CPUOptimization {
+        max_threads: 4,
+        thread_pool_size: 8,
+        background_processing: true,
+        async_operations: true,
+        batch_processing: true,
+        priority_level: crate::optimization::ThreadPriority::Normal,
+    };
+    
+    let resource_monitor = Arc::new(ResourceMonitor::new(memory_opt, cpu_opt));
+    RESOURCE_MONITOR.set(resource_monitor).unwrap();
+    
+    let optimization_cache = Arc::new(AdvancedCache::new(1000));
+    OPTIMIZATION_CACHE.set(optimization_cache).unwrap();
+    
+    let thread_pool = Arc::new(ThreadPool::new(8));
+    THREAD_POOL.set(thread_pool).unwrap();
+    
+    let performance_profiler = Arc::new(PerformanceProfiler::new());
+    PERFORMANCE_PROFILER.set(performance_profiler).unwrap();
 
     info!("Global state initialized successfully");
 }
@@ -1006,4 +1053,74 @@ async fn disconnect_wallet() -> Result<String, String> {
         Ok(_) => Ok("Disconnected from network successfully".to_string()),
         Err(e) => Err(format!("Failed to disconnect: {}", e)),
     }
+}
+
+// ===== PHASE 3.2: PERFORMANCE OPTIMIZATION COMMANDS =====
+
+#[tauri::command]
+async fn get_resource_metrics() -> Result<serde_json::Value, String> {
+    let resource_monitor = RESOURCE_MONITOR.get().unwrap();
+    let metrics = resource_monitor.get_metrics();
+    Ok(serde_json::to_value(metrics).unwrap_or_default())
+}
+
+#[tauri::command]
+async fn start_resource_monitoring() -> Result<String, String> {
+    let resource_monitor = RESOURCE_MONITOR.get().unwrap();
+    resource_monitor.start_monitoring();
+    Ok("Resource monitoring started successfully".to_string())
+}
+
+#[tauri::command]
+async fn stop_resource_monitoring() -> Result<String, String> {
+    let resource_monitor = RESOURCE_MONITOR.get().unwrap();
+    resource_monitor.stop_monitoring();
+    Ok("Resource monitoring stopped successfully".to_string())
+}
+
+#[tauri::command]
+async fn optimize_memory() -> Result<String, String> {
+    let resource_monitor = RESOURCE_MONITOR.get().unwrap();
+    resource_monitor.optimize_memory();
+    Ok("Memory optimization completed successfully".to_string())
+}
+
+#[tauri::command]
+async fn get_cache_performance() -> Result<serde_json::Value, String> {
+    let cache = OPTIMIZATION_CACHE.get().unwrap();
+    let stats = cache.stats();
+    Ok(serde_json::json!({
+        "hit_rate": stats.hit_rate(),
+        "hits": stats.hits.load(std::sync::atomic::Ordering::Relaxed),
+        "misses": stats.misses.load(std::sync::atomic::Ordering::Relaxed),
+        "size": stats.size.load(std::sync::atomic::Ordering::Relaxed),
+        "max_size": stats.max_size
+    }))
+}
+
+#[tauri::command]
+async fn clear_optimization_cache() -> Result<String, String> {
+    let cache = OPTIMIZATION_CACHE.get().unwrap();
+    cache.clear();
+    Ok("Optimization cache cleared successfully".to_string())
+}
+
+#[tauri::command]
+async fn get_performance_profile() -> Result<serde_json::Value, String> {
+    let profiler = PERFORMANCE_PROFILER.get().unwrap();
+    let results = profiler.get_results();
+    Ok(serde_json::to_value(results).unwrap_or_default())
+}
+
+#[tauri::command]
+async fn start_performance_profiling() -> Result<String, String> {
+    let profiler = PERFORMANCE_PROFILER.get().unwrap();
+    profiler.clear(); // Clear previous results
+    Ok("Performance profiling started successfully".to_string())
+}
+
+#[tauri::command]
+async fn stop_performance_profiling() -> Result<String, String> {
+    // Profiling is automatically stopped when operations complete
+    Ok("Performance profiling stopped successfully".to_string())
 }

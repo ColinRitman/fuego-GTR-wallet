@@ -10,9 +10,11 @@ let enhancedWalletInfo: any = null;
 let advancedTransactions: any[] = [];
 let performanceMetrics: any = null;
 let appSettings: any = null;
-let currentLanguage = 'en';
+// Note: currentLanguage managed by backend; keep for future UI language controls
+// const currentLanguage = 'en';
 let availableLanguages: any[] = [];
 let notifications: any[] = [];
+let deposits: any[] = [];
 
 // DOM elements
 let walletStatusEl: HTMLElement | null;
@@ -29,8 +31,6 @@ async function init() {
   await loadWalletInfo();
   await loadTransactions();
   await loadNetworkStatus();
-  await loadDepositAddresses();
-  await loadDepositTransactions();
   
   // Load advanced features
   await loadEnhancedWalletInfo();
@@ -39,15 +39,10 @@ async function init() {
   await loadAppSettings();
   await loadAvailableLanguages();
   await loadNotifications();
+  await loadDeposits();
   
   // Update UI
   updateUI();
-  
-  // Set the main address as the current deposit address
-  if (walletInfo && walletInfo.address) {
-    currentDepositAddress = walletInfo.address;
-    updateDepositAddressDisplay();
-  }
 }
 
 // Load wallet information
@@ -135,6 +130,105 @@ async function loadNotifications() {
   }
 }
 
+// ===== Term Deposits (on-chain locking) =====
+async function loadDeposits() {
+  try {
+    deposits = await invoke('get_term_deposits');
+    console.log('Deposits loaded:', deposits);
+    updateDepositsDisplay();
+  } catch (error) {
+    console.error('Failed to load deposits:', error);
+  }
+}
+
+async function createDeposit() {
+  const amountInput = document.querySelector('#deposit-amount') as HTMLInputElement;
+  const termSelect = document.querySelector('#deposit-term') as HTMLSelectElement;
+  if (!amountInput || !termSelect) return;
+  
+  const amount = parseFloat(amountInput.value);
+  const term = parseInt(termSelect.value, 10);
+  
+  if (isNaN(amount) || amount < 1) {
+    alert('Minimum deposit amount is 1 XFG');
+    return;
+  }
+  if (isNaN(term)) {
+    alert('Please select a valid term');
+    return;
+  }
+  
+  try {
+    const amountAtomic = Math.floor(amount * 10000000);
+    const depositId = await invoke('create_term_deposit', { amount: amountAtomic, term });
+    alert(`Deposit created successfully. ID: ${depositId}`);
+    amountInput.value = '';
+    await loadDeposits();
+    await refresh();
+  } catch (error) {
+    console.error('Failed to create deposit:', error);
+    alert(`Failed to create deposit: ${error}`);
+  }
+}
+
+async function withdrawDeposit(depositId: string) {
+  if (!depositId) return;
+  try {
+    const txHash = await invoke('withdraw_term_deposit', { depositId });
+    alert(`Withdrawn successfully. TX: ${txHash}`);
+    await loadDeposits();
+    await refresh();
+  } catch (error) {
+    console.error('Failed to withdraw deposit:', error);
+    alert(`Failed to withdraw deposit: ${error}`);
+  }
+}
+
+function updateDepositsDisplay() {
+  const listEl = document.querySelector('#deposits-list');
+  if (!listEl) return;
+  
+  if (!Array.isArray(deposits) || deposits.length === 0) {
+    listEl.innerHTML = '<div class="no-data">No term deposits found</div>';
+    return;
+  }
+  
+  listEl.innerHTML = deposits.map((d: any) => {
+    const amountXFG = (d.amount / 10000000).toFixed(7);
+    const interestXFG = (d.interest / 10000000).toFixed(7);
+    const canWithdraw = d.status === 'unlocked';
+    return `
+      <div class="deposit-item">
+        <div class="deposit-row">
+          <div class="deposit-col">
+            <div><strong>Amount:</strong> ${amountXFG} XFG</div>
+            <div><strong>Interest:</strong> ${interestXFG} XFG</div>
+          </div>
+          <div class="deposit-col">
+            <div><strong>Term:</strong> ${d.term} days</div>
+            <div><strong>Rate:</strong> ${(d.rate * 100).toFixed(2)}%</div>
+          </div>
+          <div class="deposit-col">
+            <div><strong>Status:</strong> ${d.status}</div>
+            <div><strong>Unlock Height:</strong> ${d.unlock_height}</div>
+          </div>
+          <div class="deposit-actions">
+            <button class="btn btn-secondary view-tx" data-hash="${d.creating_transaction_hash}">View TX</button>
+            <button class="btn btn-primary withdraw-deposit-btn" data-id="${d.id}" ${canWithdraw ? '' : 'disabled'}>Withdraw</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+  
+  // Bind withdraw buttons
+  document.querySelectorAll('.withdraw-deposit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = (btn as HTMLElement).getAttribute('data-id') || '';
+      withdrawDeposit(id);
+    });
+  });
+}
+
 // Update UI with loaded data
 function updateUI() {
   // Update wallet status
@@ -203,15 +297,14 @@ async function refresh() {
   await loadWalletInfo();
   await loadTransactions();
   await loadNetworkStatus();
-  await loadDepositAddresses();
-  await loadDepositTransactions();
   updateUI();
-  
-  // Update deposit address if needed
-  if (walletInfo && walletInfo.address && !currentDepositAddress) {
-    currentDepositAddress = walletInfo.address;
-    updateDepositAddressDisplay();
-  }
+  await loadDeposits();
+}
+
+// Advanced UI updater (placeholder rendering of enhanced info and notifications)
+function updateAdvancedUI() {
+  // Optionally render enhancedWalletInfo somewhere if needed
+  // For now, keep minimal to avoid DOM elements that don't exist yet
 }
 
 // Test FFI integration
@@ -328,144 +421,6 @@ function updateSyncDisplay(networkStatus: any) {
   }
 }
 
-// Deposit functionality
-let currentDepositAddress = "";
-let depositAddresses: any[] = [];
-let depositTransactions: any[] = [];
-
-// Load deposit addresses
-async function loadDepositAddresses() {
-  try {
-    depositAddresses = await invoke("get_deposit_addresses");
-    console.log("Deposit addresses loaded:", depositAddresses);
-    updateDepositAddressesDisplay();
-  } catch (error) {
-    console.error("Failed to load deposit addresses:", error);
-  }
-}
-
-// Load deposit transactions
-async function loadDepositTransactions() {
-  try {
-    depositTransactions = await invoke("get_deposit_transactions");
-    console.log("Deposit transactions loaded:", depositTransactions);
-    updateDepositTransactionsDisplay();
-  } catch (error) {
-    console.error("Failed to load deposit transactions:", error);
-  }
-}
-
-// Generate new deposit address
-async function generateNewDepositAddress() {
-  const label = prompt("Enter a label for this deposit address (optional):");
-  if (label === null) return; // User cancelled
-  
-  try {
-    const newAddress: any = await invoke("generate_deposit_address", { label: label || null });
-    console.log("Generated new deposit address:", newAddress);
-    
-    // Reload deposit addresses
-    await loadDepositAddresses();
-    
-    // Update main deposit address display
-    currentDepositAddress = newAddress.address;
-    updateDepositAddressDisplay();
-    
-    alert(`New deposit address generated!\n\nAddress: ${newAddress.address}\nLabel: ${newAddress.label}`);
-  } catch (error) {
-    console.error("Failed to generate deposit address:", error);
-    alert(`Failed to generate deposit address: ${error}`);
-  }
-}
-
-// Copy address to clipboard
-async function copyAddressToClipboard() {
-  if (!currentDepositAddress) {
-    alert("No deposit address available");
-    return;
-  }
-  
-  try {
-    await navigator.clipboard.writeText(currentDepositAddress);
-    alert("Address copied to clipboard!");
-  } catch (error) {
-    console.error("Failed to copy address:", error);
-    // Fallback for older browsers
-    const textArea = document.createElement("textarea");
-    textArea.value = currentDepositAddress;
-    document.body.appendChild(textArea);
-    textArea.select();
-    document.execCommand("copy");
-    document.body.removeChild(textArea);
-    alert("Address copied to clipboard!");
-  }
-}
-
-// Update deposit address display
-function updateDepositAddressDisplay() {
-  const depositAddressEl = document.querySelector("#deposit-address");
-  if (depositAddressEl) {
-    depositAddressEl.textContent = currentDepositAddress || "Loading...";
-  }
-  
-  // Update QR code placeholder
-  const qrCodeEl = document.querySelector("#qr-code .qr-placeholder");
-  if (qrCodeEl && currentDepositAddress) {
-    qrCodeEl.textContent = `QR Code for:\n${currentDepositAddress.substring(0, 20)}...`;
-  }
-}
-
-// Update deposit addresses list
-function updateDepositAddressesDisplay() {
-  const addressesEl = document.querySelector("#deposit-addresses");
-  if (addressesEl) {
-    if (depositAddresses.length === 0) {
-      addressesEl.innerHTML = '<div class="no-data">No deposit addresses found</div>';
-      return;
-    }
-    
-    addressesEl.innerHTML = depositAddresses.map(addr => `
-      <div class="deposit-address-item">
-        <div class="deposit-address-item-header">
-          <span class="deposit-address-label">${addr.label}</span>
-          <span class="deposit-address-stats">
-            ${addr.transaction_count} transactions • ${(addr.total_received / 10000000).toFixed(7)} XFG received
-          </span>
-        </div>
-        <div class="deposit-address-text">${addr.address}</div>
-        <div class="deposit-address-stats">
-          Created: ${new Date(addr.created_at * 1000).toLocaleString()}
-          ${addr.is_main ? ' • Main Address' : ''}
-        </div>
-      </div>
-    `).join('');
-  }
-}
-
-// Update deposit transactions display
-function updateDepositTransactionsDisplay() {
-  const transactionsEl = document.querySelector("#deposit-transactions");
-  if (transactionsEl) {
-    if (depositTransactions.length === 0) {
-      transactionsEl.innerHTML = '<div class="no-data">No deposit transactions found</div>';
-      return;
-    }
-    
-    transactionsEl.innerHTML = depositTransactions.map(tx => `
-      <div class="deposit-transaction-item">
-        <div class="deposit-transaction-header">
-          <span class="deposit-transaction-amount">+${(tx.amount / 10000000).toFixed(7)} XFG</span>
-          <span class="deposit-transaction-time">${new Date(tx.timestamp * 1000).toLocaleString()}</span>
-        </div>
-        <div class="deposit-transaction-details">
-          From: ${tx.from_address}<br>
-          Transaction: ${tx.hash}<br>
-          Status: ${tx.is_confirmed ? 'Confirmed' : 'Pending'}
-        </div>
-      </div>
-    `).join('');
-  }
-}
 
 // Initialize when DOM is loaded
 window.addEventListener("DOMContentLoaded", () => {
@@ -489,10 +444,8 @@ window.addEventListener("DOMContentLoaded", () => {
   
   // Set up send transaction button
   document.querySelector("#send-btn")?.addEventListener("click", sendTransaction);
-  
-  // Set up deposit buttons
-  document.querySelector("#copy-address-btn")?.addEventListener("click", copyAddressToClipboard);
-  document.querySelector("#generate-new-address-btn")?.addEventListener("click", generateNewDepositAddress);
+  // Set up term deposits
+  document.querySelector("#create-deposit-btn")?.addEventListener("click", () => createDeposit());
   
   // Initialize the app
   init();

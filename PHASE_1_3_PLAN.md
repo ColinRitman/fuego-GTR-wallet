@@ -17,13 +17,15 @@ This phase focuses on replacing the mock implementations with real CryptoNote C+
 - **Current**: Mock C++ implementation in `crypto_note_ffi.cpp`
 - **Target**: Real CryptoNote library integration
 - **Approach**: 
-  - Copy necessary CryptoNote source files to Tauri project
+  - Source CryptoNote code from `https://github.com/ColinRitman/fuego`
+  - Vendor `cryptonote` tree into `src-tauri/cryptonote/` (or add as git submodule)
+  - Provide helper script `scripts/fetch_cryptonote.sh` to sync upstream
   - Create static library build configuration
   - Link against real CryptoNote wallet implementation
 
 #### 1.2 Required CryptoNote Components
 ```
-cryptonote/
+src-tauri/cryptonote/    # sourced from ColinRitman/fuego
 ├── src/
 │   ├── WalletLegacy/
 │   │   ├── WalletLegacy.h/cpp

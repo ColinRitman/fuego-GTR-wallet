@@ -4,9 +4,21 @@
 //! Build script for compiling C++ FFI library
 
 use std::env;
+use std::path::Path;
 
 fn main() {
-    // Try to build real Fuego wallet implementation
+    // Prefer vendored cryptonote if present and ENABLE_VENDORED_CRYPTONOTE is set
+    let use_vendored = env::var("ENABLE_VENDORED_CRYPTONOTE").ok().as_deref() == Some("1");
+    let vendored_exists = Path::new("cryptonote/include").exists() || Path::new("./src-tauri/cryptonote/include").exists();
+
+    if use_vendored && vendored_exists {
+        if build_with_vendored_cryptonote() {
+            println!("cargo:warning=Using vendored cryptonote sources");
+            return;
+        }
+    }
+
+    // Try to build real Fuego wallet minimal implementation
     if build_real_fuego_wallet() {
         println!("cargo:warning=Using real Fuego wallet implementation");
         return;
@@ -56,6 +68,50 @@ fn build_real_fuego_wallet() -> bool {
         // Windows linking handled by MSVC
     }
     
+    true
+}
+
+fn build_with_vendored_cryptonote() -> bool {
+    // Root for vendored cryptonote
+    let include_root = if Path::new("cryptonote/include").exists() { "cryptonote/include" } else { "src-tauri/cryptonote/include" };
+    let src_root = if Path::new("cryptonote/src").exists() { "cryptonote/src" } else { "src-tauri/cryptonote/src" };
+
+    // Build fuego wallet shim
+    cc::Build::new()
+        .cpp(true)
+        .std("c++14")
+        .file("fuego_wallet_real.cpp")
+        .include(".")
+        .include(include_root)
+        .compile("fuego_wallet_real");
+    println!("cargo:rustc-link-lib=fuego_wallet_real");
+
+    // Build ffi layer
+    cc::Build::new()
+        .cpp(true)
+        .std("c++14")
+        .file("crypto_note_ffi.cpp")
+        .include(".")
+        .include(include_root)
+        .compile("crypto_note_ffi");
+
+    // Minimal: Ask cargo to rerun when these change
+    println!("cargo:rerun-if-changed=fuego_wallet_real.cpp");
+    println!("cargo:rerun-if-changed=fuego_wallet_real.h");
+    println!("cargo:rerun-if-changed=crypto_note_ffi.cpp");
+    println!("cargo:rerun-if-changed=crypto_note_ffi.h");
+    println!("cargo:rerun-if-changed={}", include_root);
+    println!("cargo:rerun-if-changed={}", src_root);
+
+    // System libs
+    if cfg!(target_os = "macos") {
+        println!("cargo:rustc-link-lib=c++");
+    } else if cfg!(target_os = "linux") {
+        println!("cargo:rustc-link-lib=stdc++");
+        println!("cargo:rustc-link-lib=pthread");
+        println!("cargo:rustc-link-lib=resolv");
+    }
+
     true
 }
 

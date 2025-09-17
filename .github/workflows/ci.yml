@@ -1,4 +1,4 @@
-name: CI - FuegoGT Wallet
+name: CI - Build (All OS)
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

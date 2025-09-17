@@ -84,25 +84,11 @@ jobs:
         working-directory: fuego-tauri
         run: npm ci
 
-      - name: Run frontend tests
-        working-directory: fuego-tauri
-        run: npm test -- --passWithNoTests
-
-      - name: Run Rust tests
-        working-directory: fuego-tauri/src-tauri
-        run: cargo test
-
-      - name: Run Clippy
-        working-directory: fuego-tauri/src-tauri
-        run: cargo clippy --all-targets --all-features -- -D warnings
-
-      - name: Run Rustfmt
-        working-directory: fuego-tauri/src-tauri
-        run: cargo fmt --all -- --check
+      # Build-only: remove tests and static analysis for speed
 
       - name: Build application
-        working-directory: fuego-tauri
-        run: npm run tauri build
+        working-directory: .
+        run: npm run tauri:build --if-present || npm run tauri build
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}

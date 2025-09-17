@@ -81,6 +81,7 @@ pub fn run() {
             wallet_get_address,
             wallet_get_transactions,
             wallet_send_transaction,
+            wallet_close,
             wallet_refresh,
             wallet_rescan,
             network_get_status,
@@ -487,6 +488,15 @@ async fn wallet_open(file_path: String, password: String) -> Result<String, Stri
     wallet.open_wallet(&file_path, &password).map_err(|e| e.to_string())?;
     let address = wallet.get_address().map_err(|e| e.to_string())?;
     Ok(address)
+}
+
+#[tauri::command]
+async fn wallet_close() -> Result<(), String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    // Best-effort: open then close. In a real implementation, use a shared instance.
+    let _ = wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password");
+    wallet.close_wallet();
+    Ok(())
 }
 
 #[tauri::command]

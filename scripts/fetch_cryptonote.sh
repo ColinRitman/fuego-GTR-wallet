@@ -35,7 +35,14 @@ if [ -z "${SRC_PATH:-}" ] || [ ! -d "$SRC_PATH" ]; then
 fi
 
 echo "[fetch_cryptonote] Using source path: $SRC_PATH"
-rsync -a --delete "$SRC_PATH/" "$CRYPTO_DIR/"
+if command -v rsync >/dev/null 2>&1; then
+  rsync -a --delete "$SRC_PATH/" "$CRYPTO_DIR/"
+else
+  echo "[fetch_cryptonote] rsync not found, using cp -a fallback"
+  rm -rf "$CRYPTO_DIR"/*
+  mkdir -p "$CRYPTO_DIR"
+  cp -a "$SRC_PATH/." "$CRYPTO_DIR/"
+fi
 
 echo "[fetch_cryptonote] Sync complete. Files available in $CRYPTO_DIR"
 

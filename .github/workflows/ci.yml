@@ -39,8 +39,8 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            fuego-tauri/src-tauri/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+            src-tauri/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -57,9 +57,83 @@ jobs:
           echo "macOS dependencies handled by Tauri"
 
       - name: Install frontend dependencies
-        working-directory: fuego-tauri
         run: npm ci
 
       - name: Build application
-        working-directory: fuego-tauri
         run: npm run tauri build -- --debug
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: fuego-tauri/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        working-directory: fuego-tauri
+        run: npm ci
+
+      - name: Run npm audit
+        working-directory: fuego-tauri
+        run: npm audit --audit-level=moderate
+
+      - name: Run Rust audit
+        working-directory: fuego-tauri/src-tauri
+        run: |
+          cargo install cargo-audit
+          cargo audit
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: 'fuego-tauri'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: fuego-tauri/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        working-directory: fuego-tauri
+        run: npm ci
+
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          languages: javascript, typescript, rust
+
+      - name: Check code formatting
+        working-directory: fuego-tauri/src-tauri
+        run: cargo fmt --all -- --check
+
+      - name: Check code style
+        working-directory: fuego-tauri/src-tauri
+        run: cargo clippy --all-targets --all-features -- -D warnings

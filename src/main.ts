@@ -48,7 +48,7 @@ async function init() {
 // Load wallet information
 async function loadWalletInfo() {
   try {
-    walletInfo = await invoke("get_wallet_info");
+    walletInfo = await invoke("wallet_get_info");
     console.log("Wallet info loaded:", walletInfo);
   } catch (error) {
     console.error("Failed to load wallet info:", error);
@@ -58,7 +58,7 @@ async function loadWalletInfo() {
 // Load transactions
 async function loadTransactions() {
   try {
-    transactions = await invoke("get_transactions", { limit: 10, offset: 0 });
+    transactions = await invoke("wallet_get_transactions", { limit: 10, offset: 0 });
     console.log("Transactions loaded:", transactions);
   } catch (error) {
     console.error("Failed to load transactions:", error);
@@ -68,7 +68,7 @@ async function loadTransactions() {
 // Load network status
 async function loadNetworkStatus() {
   try {
-    networkStatus = await invoke("get_network_status");
+    networkStatus = await invoke("network_get_status");
     console.log("Network status loaded:", networkStatus);
   } catch (error) {
     console.error("Failed to load network status:", error);
@@ -78,7 +78,7 @@ async function loadNetworkStatus() {
 // Advanced Features Loading Functions
 async function loadEnhancedWalletInfo() {
   try {
-    enhancedWalletInfo = await invoke('get_enhanced_wallet_info');
+    enhancedWalletInfo = await invoke('wallet_get_info');
     console.log('Enhanced wallet info loaded:', enhancedWalletInfo);
   } catch (error) {
     console.error('Failed to load enhanced wallet info:', error);
@@ -87,7 +87,7 @@ async function loadEnhancedWalletInfo() {
 
 async function loadAdvancedTransactions() {
   try {
-    advancedTransactions = await invoke('get_advanced_transactions');
+    advancedTransactions = await invoke('wallet_get_transactions');
     console.log('Advanced transactions loaded:', advancedTransactions);
   } catch (error) {
     console.error('Failed to load advanced transactions:', error);
@@ -133,7 +133,7 @@ async function loadNotifications() {
 // ===== Term Deposits (on-chain locking) =====
 async function loadDeposits() {
   try {
-    deposits = await invoke('get_term_deposits');
+    deposits = await invoke('deposit_list');
     console.log('Deposits loaded:', deposits);
     updateDepositsDisplay();
   } catch (error) {
@@ -160,7 +160,7 @@ async function createDeposit() {
   
   try {
     const amountAtomic = Math.floor(amount * 10000000);
-    const depositId = await invoke('create_term_deposit', { amount: amountAtomic, term });
+    const depositId = await invoke('deposit_create', { amount: amountAtomic, term });
     alert(`Deposit created successfully. ID: ${depositId}`);
     amountInput.value = '';
     await loadDeposits();
@@ -174,7 +174,7 @@ async function createDeposit() {
 async function withdrawDeposit(depositId: string) {
   if (!depositId) return;
   try {
-    const txHash = await invoke('withdraw_term_deposit', { depositId });
+    const txHash = await invoke('deposit_withdraw', { depositId });
     alert(`Withdrawn successfully. TX: ${txHash}`);
     await loadDeposits();
     await refresh();
@@ -381,7 +381,7 @@ async function sendTransaction() {
     // Convert XFG to atomic units (7 decimal places)
     const amountAtomicUnits = Math.floor(amount * 10000000);
     
-    const result = await invoke("send_transaction", {
+    const result = await invoke("wallet_send_transaction", {
       recipient: recipientAddress,
       amount: amountAtomicUnits,
       paymentId: paymentId || null,

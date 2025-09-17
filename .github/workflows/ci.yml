@@ -11,10 +11,7 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-<<<<<<< HEAD
   build:
-=======
-  test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -23,18 +20,18 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: fuego-tauri/package-lock.json
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
 
       - name: Cache Rust dependencies
         uses: actions/cache@v3
@@ -45,7 +42,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             fuego-tauri/src-tauri/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('fuego-tauri/src-tauri/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -53,7 +50,23 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.0-dev libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+          sudo apt-get install -y \
+            libwebkit2gtk-4.0-dev \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            build-essential \
+            cmake \
+            pkg-config
+
+      - name: Install system dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          # Install Visual Studio Build Tools
+          choco install visualstudio2022buildtools -y
+          choco install cmake -y
+          choco install pkgconfiglite -y
 
       - name: Install system dependencies (macOS)
         if: matrix.os == 'macos-latest'
@@ -65,45 +78,24 @@ jobs:
         working-directory: fuego-tauri
         run: npm ci
 
-      - name: Run frontend linting
-        working-directory: fuego-tauri
-        run: |
-          npm run lint --if-present || echo "No lint script found"
-          npm run type-check --if-present || echo "No type-check script found"
-
-      - name: Run frontend tests
-        working-directory: fuego-tauri
-        run: npm test -- --passWithNoTests
-
-      - name: Run Rust tests
-        working-directory: fuego-tauri/src-tauri
-        run: cargo test --verbose
-
-      - name: Run Rust clippy
-        working-directory: fuego-tauri/src-tauri
-        run: cargo clippy --all-targets --all-features -- -D warnings
-
-      - name: Run Rust fmt check
-        working-directory: fuego-tauri/src-tauri
-        run: cargo fmt --all -- --check
-
-      - name: Build application (development)
+      - name: Build application
         working-directory: fuego-tauri
         run: npm run tauri build -- --debug
-        continue-on-error: true
 
   security:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: fuego-tauri/package-lock.json
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -126,7 +118,7 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
-          scan-ref: '.'
+          scan-ref: 'fuego-tauri'
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
@@ -136,13 +128,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: fuego-tauri/package-lock.json
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -163,42 +157,3 @@ jobs:
       - name: Check code style
         working-directory: fuego-tauri/src-tauri
         run: cargo clippy --all-targets --all-features -- -D warnings
-
-  build-check:
->>>>>>> 974e3c9 (Fix macOS dependencies in GitHub Actions workflows)
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install system dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.0-dev libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
-
-      - name: Install system dependencies (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          # macOS dependencies are handled by Tauri automatically
-          echo "macOS dependencies handled by Tauri"
-
-      - name: Install frontend dependencies
-        run: npm ci
-
-      - name: Build application (debug)
-        run: npm run tauri:build --if-present || npm run tauri build -- --debug

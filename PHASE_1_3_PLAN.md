@@ -197,3 +197,140 @@ src-tauri/
 3. Create build configuration
 4. Test basic compilation
 5. Implement core wallet functions incrementally
+
+---
+
+# Fuego-Wallet Parity Plan (Full Mirror)
+
+## Objective
+Achieve feature and API parity with `fuego-wallet` so that the Fuego GTR Wallet can act as a drop-in replacement. This includes matching end-user features and mirroring public Tauri commands (names, parameters, and JSON shapes) wherever feasible.
+
+## Feature Parity Scope
+
+- Wallet Core
+  - Create/Open/Close wallet
+  - Address retrieval and validation (primary, integrated, subaddress roadmap)
+  - Balance/unlocked balance
+  - Transaction history with pagination and fetch-by-hash
+  - Send transaction (payment id/mixin/ringsize as applicable)
+  - Fee estimation
+  - Refresh/rescan from height
+
+- Network/Node
+  - Connect to node (auto/best node + manual host:port)
+  - Disconnect from node
+  - Network/daemon status (heights, peers, syncing)
+
+- Certificates of Ledger Deposit (On-chain Term Deposits)
+  - List deposits
+  - Create deposit (amount + term)
+  - Withdraw deposit (after unlock)
+
+- Messaging (roadmap if present in fuego-wallet)
+  - P2P messaging send/receive/list/delete (subject to upstream API confirmation)
+
+- Settings and Internationalization
+  - Get/update app settings
+  - Get available languages
+
+- Advanced/Utilities
+  - Estimate transaction fee
+  - Validate address
+  - Get transaction by hash / detailed info (roadmap)
+
+## Public API (Tauri Commands) To Mirror
+
+Note: Commands marked with (implemented) already exist; others are to be implemented/verified for parity or refined to match exact I/O shapes of `fuego-wallet`.
+
+- Wallet
+  - wallet_create(password: string, file_path: string, seed_phrase?: string, restore_height?: u64) -> string (address) (implemented)
+  - wallet_open(file_path: string, password: string) -> string (address) (implemented)
+  - wallet_close() -> void (to implement)
+  - wallet_get_info() -> { address, balance, unlocked_balance, ... } (implemented)
+  - wallet_get_balance() -> u64 (atomic units) (implemented)
+  - wallet_get_address() -> string (implemented)
+  - wallet_get_transactions(limit?: u64, offset?: u64) -> Array<Tx> (implemented stub - returns [])
+  - wallet_send_transaction(recipient: string, amount: u64, payment_id?: string, mixin?: u64) -> string (tx_hash) (implemented)
+  - wallet_refresh() -> void (implemented)
+  - wallet_rescan(start_height?: u64) -> void (implemented)
+
+- Network/Node
+  - network_get_status() -> NetworkStatus (implemented)
+  - node_connect(address?: string, port?: u16) -> void (implemented)
+  - node_disconnect() -> void (implemented)
+
+- Deposits
+  - deposit_list() -> Array<Deposit> (implemented)
+  - deposit_create(amount: u64, term: u32) -> string (deposit_id) (implemented)
+  - deposit_withdraw(deposit_id: string) -> string (tx_hash) (implemented)
+
+- Utilities
+  - estimate_fee(address: string, amount: u64, mixin?: u64) -> u64 (implemented)
+  - validate_address(address: string) -> boolean (basic impl; refine)
+
+- Optional/Advanced (confirm upstream before adding)
+  - wallet_get_transaction_by_hash(hash: string) -> TxDetail (roadmap)
+  - address_create(label?: string) / address_list() / address_label_set() (roadmap if upstream supports subaddresses)
+  - messaging_* commands (send, list, subscribe) (roadmap)
+
+## API Shape Alignment
+
+For each command, align the JSON structure to match `fuego-wallet` responses:
+
+- wallet_get_info
+  - Required fields: address, balance, unlocked_balance, is_open, is_real
+  - Optional/extended: is_connected, sync heights, peer_count
+
+- network_get_status
+  - Required: is_connected, peer_count, sync_height, network_height, is_syncing, connection_type
+
+- wallet_get_transactions
+  - Fields: id/hash/amount/fee/timestamp/confirmations/is_confirmed/is_pending/payment_id/destination_addresses/source_addresses
+
+- deposit entries
+  - id, amount, interest, term, rate, status, unlock_height, unlock_time, creating_transaction_hash, creating_height/ time, spending_transaction_hash/height/time, type
+
+Where the exact field names/types differ, add lightweight mapping adapters in Rust prior to returning JSON.
+
+## Roadmap and Phases (Parity-Oriented)
+
+- Phase A: API Surface Parity (Backend)
+  1) Implement wallet_close
+  2) Flesh out wallet_get_transactions from blockchain
+  3) Harden validate_address using C++/CryptoNote validation
+  4) Ensure JSON field names and shapes match fuego-wallet
+
+- Phase B: UX Parity (Frontend)
+  1) Update frontend to call fuego-wallet command names exclusively
+  2) Adjust UI to reflect fuego-wallet information density and wording
+  3) Add error messages and progress states to match upstream
+
+- Phase C: Advanced Features
+  1) Implement transaction-by-hash details
+  2) Subaddress management (if in upstream)
+  3) Messaging (if in upstream) — design, storage, subscription, notifications
+
+- Phase D: Robustness & Security
+  1) Full error mapping from C++ exceptions to structured errors
+  2) Deterministic tests for each command (success/failure paths)
+  3) Performance profiling and async progress reporting
+
+## Testing & Validation
+
+- Contract Tests
+  - Snapshot tests asserting exact JSON field presence and types for each command
+  - Negative tests (invalid address, insufficient funds, node offline)
+
+- Integration Tests
+  - End-to-end: create/open wallet → connect → refresh → send tx → check balance → deposits lifecycle
+
+- Performance Targets
+  - wallet_get_info < 150ms after warm-up (without network calls)
+  - network_get_status < 500ms under normal conditions
+
+## Deliverables
+
+- Backend parity layer (Tauri commands) with documented I/O
+- Frontend updated to use fuego-wallet command names
+- Test suite covering command contracts and typical flows
+- Documentation: API reference and migration notes

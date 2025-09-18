@@ -1,338 +1,484 @@
-# Phase 1.3: Real CryptoNote Integration Plan
+# Phase 1-3: WalletLegacy Integration Implementation Plan
 
 ## Overview
-This phase focuses on replacing the mock implementations with real CryptoNote C++ wallet functionality through our FFI wrapper.
+This comprehensive plan focuses on leveraging the existing WalletLegacy C++ implementation from the Fuego codebase to replace our current mock implementations with fully functional wallet operations.
 
 ## Goals
-- Integrate actual CryptoNote C++ wallet code
-- Implement real blockchain synchronization
-- Enable actual transaction processing
-- Maintain security and performance
+- Integrate WalletLegacy C++ classes for real wallet functionality
+- Implement comprehensive command set using existing battle-tested code
+- Enable full blockchain synchronization with progress reporting
+- Provide secure key management and transaction processing
+- Maintain high performance with responsive UI operations
 
-## Implementation Strategy
+## WalletLegacy Architecture Integration
 
-### 1. CryptoNote Library Integration
+### Available Components
+The Fuego codebase provides a complete WalletLegacy implementation:
 
-#### 1.1 Build System Integration
-- **Current**: Mock C++ implementation in `crypto_note_ffi.cpp`
-- **Target**: Real CryptoNote library integration
-- **Approach**: 
-  - Source CryptoNote code from `https://github.com/ColinRitman/fuego`
-  - Vendor `cryptonote` tree into `src-tauri/cryptonote/` (or add as git submodule)
-  - Provide helper script `scripts/fetch_cryptonote.sh` to sync upstream
-  - Create static library build configuration
-  - Link against real CryptoNote wallet implementation
-
-#### 1.2 Required CryptoNote Components
 ```
-src-tauri/cryptonote/    # sourced from ColinRitman/fuego
-├── src/
-│   ├── WalletLegacy/
-│   │   ├── WalletLegacy.h/cpp
-│   │   ├── WalletHelper.h/cpp
-│   │   ├── WalletLegacySerializer.h/cpp
-│   │   └── WalletLegacySerialization.h/cpp
-│   ├── CryptoNoteCore/
-│   │   ├── Currency.h/cpp
-│   │   ├── CryptoNoteTools.h/cpp
-│   │   └── CryptoNoteFormatUtils.h/cpp
-│   ├── Crypto/
-│   │   ├── crypto.h/cpp
-│   │   └── crypto-ops.c
-│   └── Common/
-│       ├── Base58.h/cpp
-│       ├── StringTools.h/cpp
-│       └── Util.h/cpp
+src-tauri/cryptonote/src/WalletLegacy/
+├── WalletLegacy.h/cpp              # Main wallet implementation (IWalletLegacy)
+├── WalletLegacySerializer.h/cpp    # Wallet file serialization/deserialization
+├── WalletTransactionSender.h/cpp   # Transaction creation and sending
+├── WalletUserTransactionsCache.h/cpp # Transaction history management
+├── WalletUnconfirmedTransactions.h/cpp # Pending transaction tracking
+├── WalletHelper.h/cpp              # Utility functions and helpers
+├── WalletDepositInfo.h             # Term deposit data structures
+├── KeysStorage.h/cpp               # Secure key management and encryption
+└── WalletUtils.h                   # Common wallet utilities
 ```
 
-### 2. FFI Implementation Updates
+### Integration Strategy
+Replace `fuego_wallet_real.cpp` mock implementation with real WalletLegacy calls:
 
-#### 2.1 Replace Mock Functions
-- **Wallet Creation**: Use `WalletLegacy::createWallet()`
-- **Wallet Opening**: Use `WalletLegacy::loadWallet()`
-- **Transaction Sending**: Use `WalletLegacy::sendTransaction()`
-- **Balance Retrieval**: Use `WalletLegacy::getBalance()`
+```cpp
+#include "WalletLegacy/WalletLegacy.h"
+#include "IWalletLegacy.h"
+#include "INode.h"
 
-#### 2.2 Memory Management
-- Implement proper C++ object lifecycle management
-- Add RAII wrappers for wallet objects
-- Ensure proper cleanup on wallet close
-
-#### 2.3 Error Handling
-- Map CryptoNote exceptions to C error codes
-- Implement comprehensive error reporting
-- Add logging for debugging
-
-### 3. Network Integration
-
-#### 3.1 Node Connection
-- Implement RPC client for Fuego network
-- Add node discovery and connection management
-- Handle network failures gracefully
-
-#### 3.2 Synchronization
-- Implement blockchain synchronization
-- Add progress reporting for sync status
-- Handle sync interruptions and resumption
-
-### 4. Security Considerations
-
-#### 4.1 Key Management
-- Secure storage of wallet keys
-- Proper key derivation and encryption
-- Memory protection for sensitive data
-
-#### 4.2 Transaction Security
-- Validate all transaction parameters
-- Implement proper mixin selection
-- Add transaction confirmation logic
-
-## Implementation Steps
-
-### Step 1: CryptoNote Library Setup
-1. Copy essential CryptoNote source files
-2. Create CMakeLists.txt for static library
-3. Update build.rs to compile CryptoNote library
-4. Test basic compilation
-
-### Step 2: Core Wallet Functions
-1. Implement `crypto_note_wallet_create()` with real wallet creation
-2. Implement `crypto_note_wallet_open()` with real wallet loading
-3. Implement `crypto_note_wallet_get_balance()` with real balance retrieval
-4. Test basic wallet operations
-
-### Step 3: Transaction Functions
-1. Implement `crypto_note_wallet_send_transaction()` with real transaction sending
-2. Implement `crypto_note_wallet_get_transactions()` with real transaction history
-3. Add transaction validation and error handling
-4. Test transaction operations
-
-### Step 4: Network Functions
-1. Implement `crypto_note_wallet_connect_node()` with real node connection
-2. Implement `crypto_note_wallet_get_network_status()` with real network status
-3. Add synchronization progress reporting
-4. Test network operations
-
-### Step 5: Integration Testing
-1. Test complete wallet lifecycle
-2. Test transaction sending and receiving
-3. Test network synchronization
-4. Performance testing and optimization
-
-## File Structure Changes
-
-### New Files to Add
-```
-src-tauri/
-├── cryptonote/                 # CryptoNote source files
-│   ├── CMakeLists.txt         # CryptoNote build configuration
-│   ├── src/
-│   │   ├── WalletLegacy/      # Wallet implementation
-│   │   ├── CryptoNoteCore/   # Core crypto functions
-│   │   ├── Crypto/            # Cryptographic operations
-│   │   └── Common/            # Common utilities
-│   └── include/               # CryptoNote headers
-├── crypto_note_ffi.cpp        # Updated with real implementations
-└── build.rs                   # Updated build configuration
+class RealWalletLegacyWrapper {
+    std::unique_ptr<CryptoNote::WalletLegacy> wallet;
+    std::unique_ptr<CryptoNote::INode> node;
+    std::unique_ptr<CryptoNote::Currency> currency;
+    
+    // Observer for real-time updates
+    std::unique_ptr<WalletLegacyObserver> observer;
+    
+public:
+    // Core wallet operations using WalletLegacy
+    bool initAndGenerate(const std::string& password, const Crypto::SecretKey& recovery_key);
+    bool initAndLoad(const std::string& password, const std::string& path);
+    void shutdown();
+    
+    // Transaction operations using WalletTransactionSender
+    CryptoNote::TransactionId sendTransaction(
+        const std::vector<CryptoNote::WalletLegacyTransfer>& transfers,
+        uint64_t fee, const std::string& extra, uint64_t mixIn);
+        
+    // Real transaction history from WalletUserTransactionsCache
+    std::vector<CryptoNote::WalletLegacyTransaction> getTransactions(
+        size_t offset, size_t count);
+        
+    // Real deposit operations using WalletDepositInfo
+    std::vector<DepositInfo> getDeposits();
+    TransactionId createDeposit(uint64_t amount, uint32_t term);
+    TransactionId withdrawDeposit(DepositId depositId);
+};
 ```
 
-### Files to Modify
-- `crypto_note_ffi.cpp` - Replace mock implementations
-- `build.rs` - Add CryptoNote library compilation
-- `Cargo.toml` - Add any additional dependencies
+## Phase 1: Core WalletLegacy Integration (Week 1)
+
+### 1.1 FFI Wrapper Implementation
+**Target**: Replace all mock wallet operations with WalletLegacy calls
+
+**Key Implementation Areas**:
+```cpp
+// fuego_wallet_real.cpp - Replace mock with real WalletLegacy
+extern "C" FuegoWallet fuego_wallet_create(
+    const char* password,
+    const char* file_path,
+    const char* seed_phrase,
+    uint64_t restore_height
+) {
+    // Use WalletLegacy::initAndGenerate() or initAndLoad()
+    auto wallet = std::make_unique<CryptoNote::WalletLegacy>(currency, node);
+    
+    if (seed_phrase && strlen(seed_phrase) > 0) {
+        // Restore from seed using WalletLegacy restoration
+        Crypto::SecretKey private_spend_key;
+        // Parse seed phrase to private key
+        wallet->initAndGenerate(password, private_spend_key);
+    } else {
+        // Create new wallet
+        wallet->initAndGenerate(password);
+    }
+    
+    return wallet.release();
+}
+```
+
+### 1.2 Transaction System Integration
+**Focus**: Implement real transaction operations using WalletTransactionSender
+
+**Key Commands**:
+- `wallet_send_transaction()` → `WalletLegacy::sendTransaction()`
+- `wallet_get_transactions()` → `WalletUserTransactionsCache`
+- `wallet_get_transaction_by_hash()` → Transaction cache lookup
+
+### 1.3 Balance and Address Operations
+**Focus**: Real balance tracking using WalletLegacy state management
+
+**Implementation**:
+```cpp
+extern "C" uint64_t fuego_wallet_get_balance(FuegoWallet wallet) {
+    auto* w = static_cast<CryptoNote::WalletLegacy*>(wallet);
+    return w->getActualBalance();
+}
+
+extern "C" uint64_t fuego_wallet_get_unlocked_balance(FuegoWallet wallet) {
+    auto* w = static_cast<CryptoNote::WalletLegacy*>(wallet);
+    return w->getPendingBalance();
+}
+
+extern "C" bool fuego_wallet_get_address(FuegoWallet wallet, char* buffer, size_t buffer_size) {
+    auto* w = static_cast<CryptoNote::WalletLegacy*>(wallet);
+    std::string address = w->getAddress(0); // Primary address
+    // Copy to buffer with safety checks
+}
+```
+
+## Phase 2: Advanced WalletLegacy Features (Week 2)
+
+### 2.1 Deposit System Integration
+**Focus**: Implement real term deposits using WalletLegacy deposit functionality
+
+**Key Features**:
+- Real deposit creation using WalletLegacy
+- Deposit status tracking and maturity calculation
+- Withdrawal processing with proper validation
+
+**Implementation**:
+```rust
+#[tauri::command]
+async fn deposit_create(amount: u64, term: u32) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || {
+        // Use WalletLegacy deposit creation
+        let wallet = get_wallet_instance()?;
+        let deposit_tx_id = wallet.create_deposit(amount, term);
+        Ok(format!("deposit_{}", deposit_tx_id))
+    }).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn deposit_list() -> Result<Vec<DepositInfo>, String> {
+    tokio::task::spawn_blocking(|| {
+        // Use WalletLegacy deposit tracking
+        let wallet = get_wallet_instance()?;
+        let deposits = wallet.get_deposits();
+        
+        // Convert to our DepositInfo structure
+        deposits.into_iter()
+            .map(|d| DepositInfo {
+                id: d.depositId.to_string(),
+                amount: d.amount,
+                term: d.term,
+                interest: d.interest,
+                status: if d.locked { "locked" } else { "unlocked" }.to_string(),
+                unlock_height: d.unlockHeight,
+                creating_tx_hash: d.creatingTransactionId.to_string(),
+            })
+            .collect()
+    }).await.map_err(|e| e.to_string())?
+}
+```
+
+### 2.2 Blockchain Synchronization
+**Focus**: Real sync progress using WalletLegacy observers
+
+**Key Components**:
+- `IWalletLegacyObserver` for sync progress events
+- Real blockchain height tracking
+- Sync status reporting with accurate progress
+
+**Implementation**:
+```cpp
+class WalletSyncObserver : public CryptoNote::IWalletLegacyObserver {
+    tauri::AppHandle app_handle;
+    
+public:
+    void synchronizationProgressUpdated(uint32_t current, uint32_t total) override {
+        // Emit real-time sync progress to frontend
+        SyncProgress progress = { current, total };
+        app_handle.emit_all("sync_progress", progress);
+    }
+    
+    void actualBalanceUpdated(uint64_t balance) override {
+        // Emit balance updates to frontend
+        app_handle.emit_all("balance_updated", balance);
+    }
+};
+```
+
+### 2.3 Key Management and Security
+**Focus**: Secure operations using KeysStorage
+
+**Security Features**:
+- Encrypted key storage using WalletLegacy encryption
+- Password change operations
+- Memory-safe key handling
+- Backup and restore functionality
+
+## Phase 3: Performance and Reliability (Week 3)
+
+### 3.1 Async Operation Wrapper
+**Focus**: Make WalletLegacy operations non-blocking
+
+**Implementation Pattern**:
+```rust
+use tokio::sync::Mutex;
+use std::sync::Arc;
+
+static WALLET_INSTANCE: Arc<Mutex<Option<WalletLegacyWrapper>>> = Arc::new(Mutex::new(None));
+
+#[tauri::command]
+async fn wallet_send_transaction_async(
+    address: String,
+    amount: u64,
+    payment_id: Option<String>,
+    mixin: Option<u64>
+) -> Result<String, String> {
+    let wallet = WALLET_INSTANCE.lock().await;
+    let wallet_ref = wallet.as_ref().ok_or("Wallet not initialized")?;
+    
+    // Spawn blocking task for WalletLegacy operations
+    let tx_hash = tokio::task::spawn_blocking(move || {
+        wallet_ref.send_transaction(address, amount, payment_id.unwrap_or_default(), mixin.unwrap_or(0))
+    }).await.map_err(|e| e.to_string())??;
+    
+    Ok(tx_hash)
+}
+```
+
+### 3.2 Event System Implementation
+**Focus**: Real-time wallet events using WalletLegacy observers
+
+**Event Types**:
+- `balance_updated` - Real balance changes from WalletLegacy
+- `transaction_received` - New incoming transactions
+- `sync_progress` - Blockchain synchronization progress
+- `deposit_matured` - Term deposit maturity notifications
+
+### 3.3 Error Handling and Recovery
+**Focus**: Comprehensive error mapping from WalletLegacy exceptions
+
+**Error Categories**:
+```rust
+#[derive(Debug, thiserror::Error)]
+pub enum WalletLegacyError {
+    #[error("Wallet initialization failed: {0}")]
+    InitializationFailed(String),
+    
+    #[error("Transaction failed: {reason}")]
+    TransactionFailed { reason: String },
+    
+    #[error("Network error: {0}")]
+    NetworkError(String),
+    
+    #[error("Insufficient funds: need {need}, have {available}")]
+    InsufficientFunds { need: u64, available: u64 },
+    
+    #[error("Wallet locked or encrypted")]
+    WalletLocked,
+}
+```
+
+## Implementation Timeline
+
+### Week 1: Foundation
+- [ ] Set up WalletLegacy FFI wrappers in `fuego_wallet_real.cpp`
+- [ ] Implement `initAndGenerate()` and `initAndLoad()` integration
+- [ ] Add basic balance and address operations using WalletLegacy
+- [ ] Test wallet creation and opening with real functionality
+
+### Week 2: Core Features  
+- [ ] Implement transaction sending using `WalletTransactionSender`
+- [ ] Add transaction history using `WalletUserTransactionsCache`
+- [ ] Integrate deposit system using WalletLegacy deposit functionality
+- [ ] Add blockchain sync with `IWalletLegacyObserver`
+
+### Week 3: Advanced Integration
+- [ ] Implement async wrappers for all WalletLegacy operations
+- [ ] Add comprehensive error handling and recovery
+- [ ] Implement real-time event system
+- [ ] Add key management and security operations
+
+### Week 4: Testing and Optimization
+- [ ] Comprehensive integration testing
+- [ ] Performance optimization and memory management
+- [ ] Security audit of key handling
+- [ ] Documentation and final polish
 
 ## Testing Strategy
 
-### Unit Tests
-- Test individual FFI functions
-- Test error handling scenarios
-- Test memory management
-
 ### Integration Tests
-- Test complete wallet operations
-- Test transaction workflows
-- Test network connectivity
+```rust
+#[cfg(test)]
+mod wallet_legacy_tests {
+    #[tokio::test]
+    async fn test_wallet_lifecycle() {
+        // Test create -> open -> operations -> close cycle
+        let password = "test_password";
+        let path = "/tmp/test_wallet";
+        
+        // Create wallet using WalletLegacy
+        let result = wallet_create(password, path, None, None).await;
+        assert!(result.is_ok());
+        
+        // Test balance retrieval
+        let balance = wallet_get_balance().await.unwrap();
+        assert_eq!(balance, 0);
+        
+        // Test address generation
+        let address = wallet_get_address().await.unwrap();
+        assert!(address.starts_with("fire"));
+    }
+    
+    #[tokio::test]
+    async fn test_transaction_operations() {
+        // Test real transaction sending using WalletLegacy
+    }
+    
+    #[tokio::test]
+    async fn test_deposit_operations() {
+        // Test deposit creation and withdrawal
+    }
+}
+```
 
-### Performance Tests
-- Measure wallet creation/opening time
-- Measure transaction processing time
-- Measure memory usage
+### Performance Benchmarks
+- Wallet creation time: < 2 seconds
+- Transaction sending time: < 5 seconds  
+- Balance retrieval time: < 100ms
+- Sync progress updates: Real-time (< 1 second delay)
 
 ## Risk Mitigation
 
 ### Technical Risks
-- **Complexity**: CryptoNote integration is complex
-- **Mitigation**: Incremental implementation with testing at each step
-
-### Security Risks
-- **Key Exposure**: Sensitive data in memory
-- **Mitigation**: Proper memory management and encryption
+- **WalletLegacy Complexity**: Integration with existing C++ code is complex
+- **Mitigation**: Start with simple operations, build incrementally, extensive testing
 
 ### Performance Risks
-- **Slow Operations**: CryptoNote operations can be slow
-- **Mitigation**: Async operations and progress reporting
+- **Blocking Operations**: WalletLegacy operations may block the UI
+- **Mitigation**: All operations wrapped in `tokio::task::spawn_blocking`
+
+### Security Risks
+- **Key Exposure**: Risk of exposing private keys in memory or logs
+- **Mitigation**: Follow WalletLegacy security patterns, audit memory usage
 
 ## Success Criteria
 
 ### Functional Requirements
-- ✅ Wallet creation with real CryptoNote implementation
-- ✅ Wallet opening with real wallet files
-- ✅ Real transaction sending and receiving
-- ✅ Actual blockchain synchronization
-- ✅ Real balance and transaction history
+- ✅ Real wallet creation and file management using WalletLegacy
+- ✅ Actual transaction sending and receiving with proper validation
+- ✅ Real blockchain synchronization with progress reporting
+- ✅ Working term deposit system with maturity tracking
+- ✅ Comprehensive transaction history and search
 
-### Non-Functional Requirements
-- ✅ Security: No key exposure or vulnerabilities
-- ✅ Performance: Operations complete within reasonable time
-- ✅ Reliability: Handles errors gracefully
-- ✅ Maintainability: Clean, documented code
+### Performance Requirements
+- ✅ All wallet operations complete within acceptable time limits
+- ✅ UI remains responsive during all operations
+- ✅ Memory usage stays under 100MB for typical operations
+- ✅ Real-time sync progress and event updates
 
-## Timeline
-- **Week 1**: CryptoNote library setup and basic functions
-- **Week 2**: Transaction functions and network integration
-- **Week 3**: Testing, optimization, and bug fixes
-- **Week 4**: Documentation and final integration
-
-## Next Steps
-1. Begin with Step 1: CryptoNote Library Setup
-2. Copy essential source files
-3. Create build configuration
-4. Test basic compilation
-5. Implement core wallet functions incrementally
+### Security Requirements
+- ✅ Keys encrypted and stored securely using WalletLegacy encryption
+- ✅ No sensitive data exposure in memory after operations
+- ✅ All input validation to prevent attacks
+- ✅ Secure transaction construction and validation
 
 ---
 
-# Fuego-Wallet Parity Plan (Full Mirror)
+# WalletLegacy Command Implementation Plan
 
-## Objective
-Achieve feature and API parity with `fuego-wallet` so that the Fuego GTR Wallet can act as a drop-in replacement. This includes matching end-user features and mirroring public Tauri commands (names, parameters, and JSON shapes) wherever feasible.
+## Command Mapping Strategy
+Map all existing Tauri commands to use WalletLegacy C++ implementation instead of mocks, ensuring full compatibility and enhanced functionality.
 
-## Feature Parity Scope
+## Core Command Implementation Using WalletLegacy
 
-- Wallet Core
-  - Create/Open/Close wallet
-  - Address retrieval and validation (primary, integrated, subaddress roadmap)
-  - Balance/unlocked balance
-  - Transaction history with pagination and fetch-by-hash
-  - Send transaction (payment id/mixin/ringsize as applicable)
-  - Fee estimation
-  - Refresh/rescan from height
+### Wallet Lifecycle Commands
+```rust
+// Replace mock implementations with WalletLegacy calls
+#[tauri::command]
+async fn wallet_create(
+    password: String,
+    file_path: String,
+    seed_phrase: Option<String>,
+    restore_height: Option<u64>
+) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || {
+        // Use WalletLegacy::initAndGenerate() or restore from seed
+        let wallet = create_wallet_legacy_instance();
+        if let Some(seed) = seed_phrase {
+            wallet.init_and_load_from_seed(password, seed, restore_height.unwrap_or(0))
+        } else {
+            wallet.init_and_generate(password, file_path)
+        }
+        // Return primary address from WalletLegacy
+    }).await.map_err(|e| e.to_string())?
+}
 
-- Network/Node
-  - Connect to node (auto/best node + manual host:port)
-  - Disconnect from node
-  - Network/daemon status (heights, peers, syncing)
+#[tauri::command]
+async fn wallet_open(file_path: String, password: String) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || {
+        // Use WalletLegacy::initAndLoad()
+        let wallet = get_wallet_legacy_instance();
+        wallet.init_and_load(file_path, password)?;
+        Ok(wallet.get_address(0)) // Primary address
+    }).await.map_err(|e| e.to_string())?
+}
 
-- Certificates of Ledger Deposit (On-chain Term Deposits)
-  - List deposits
-  - Create deposit (amount + term)
-  - Withdraw deposit (after unlock)
+#[tauri::command]
+async fn wallet_close() -> Result<(), String> {
+    tokio::task::spawn_blocking(|| {
+        // Use WalletLegacy::shutdown()
+        let wallet = get_wallet_legacy_instance();
+        wallet.shutdown();
+        Ok(())
+    }).await.map_err(|e| e.to_string())?
+}
+```
 
-- Messaging (roadmap if present in fuego-wallet)
-  - P2P messaging send/receive/list/delete (subject to upstream API confirmation)
+### Transaction Commands Using WalletLegacy
+```rust
+#[tauri::command]
+async fn wallet_send_transaction(
+    recipient: String,
+    amount: u64,
+    payment_id: Option<String>,
+    mixin: Option<u64>
+) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || {
+        // Use WalletLegacy::sendTransaction() with real validation
+        let wallet = get_wallet_legacy_instance();
+        
+        let transfers = vec![WalletLegacyTransfer {
+            address: recipient,
+            amount: amount as i64,
+        }];
+        
+        let tx_id = wallet.send_transaction(
+            transfers,
+            0, // fee (auto-calculated)
+            payment_id.unwrap_or_default(),
+            mixin.unwrap_or(0)
+        )?;
+        
+        // Get transaction hash from WalletLegacy
+        let tx_hash = wallet.get_transaction(tx_id).hash;
+        Ok(format!("{:?}", tx_hash))
+    }).await.map_err(|e| e.to_string())?
+}
 
-- Settings and Internationalization
-  - Get/update app settings
-  - Get available languages
-
-- Advanced/Utilities
-  - Estimate transaction fee
-  - Validate address
-  - Get transaction by hash / detailed info (roadmap)
-
-## Public API (Tauri Commands) To Mirror
-
-Note: Commands marked with (implemented) already exist; others are to be implemented/verified for parity or refined to match exact I/O shapes of `fuego-wallet`.
-
-- Wallet
-  - wallet_create(password: string, file_path: string, seed_phrase?: string, restore_height?: u64) -> string (address) (implemented)
-  - wallet_open(file_path: string, password: string) -> string (address) (implemented)
-  - wallet_close() -> void (to implement)
-  - wallet_get_info() -> { address, balance, unlocked_balance, ... } (implemented)
-  - wallet_get_balance() -> u64 (atomic units) (implemented)
-  - wallet_get_address() -> string (implemented)
-  - wallet_get_transactions(limit?: u64, offset?: u64) -> Array<Tx> (implemented stub - returns [])
-  - wallet_send_transaction(recipient: string, amount: u64, payment_id?: string, mixin?: u64) -> string (tx_hash) (implemented)
-  - wallet_refresh() -> void (implemented)
-  - wallet_rescan(start_height?: u64) -> void (implemented)
-
-- Network/Node
-  - network_get_status() -> NetworkStatus (implemented)
-  - node_connect(address?: string, port?: u16) -> void (implemented)
-  - node_disconnect() -> void (implemented)
-
-- Deposits
-  - deposit_list() -> Array<Deposit> (implemented)
-  - deposit_create(amount: u64, term: u32) -> string (deposit_id) (implemented)
-  - deposit_withdraw(deposit_id: string) -> string (tx_hash) (implemented)
-
-- Utilities
-  - estimate_fee(address: string, amount: u64, mixin?: u64) -> u64 (implemented)
-  - validate_address(address: string) -> boolean (basic impl; refine)
-
-- Optional/Advanced (confirm upstream before adding)
-  - wallet_get_transaction_by_hash(hash: string) -> TxDetail (roadmap)
-  - address_create(label?: string) / address_list() / address_label_set() (roadmap if upstream supports subaddresses)
-  - messaging_* commands (send, list, subscribe) (roadmap)
-
-## API Shape Alignment
-
-For each command, align the JSON structure to match `fuego-wallet` responses:
-
-- wallet_get_info
-  - Required fields: address, balance, unlocked_balance, is_open, is_real
-  - Optional/extended: is_connected, sync heights, peer_count
-
-- network_get_status
-  - Required: is_connected, peer_count, sync_height, network_height, is_syncing, connection_type
-
-- wallet_get_transactions
-  - Fields: id/hash/amount/fee/timestamp/confirmations/is_confirmed/is_pending/payment_id/destination_addresses/source_addresses
-
-- deposit entries
-  - id, amount, interest, term, rate, status, unlock_height, unlock_time, creating_transaction_hash, creating_height/ time, spending_transaction_hash/height/time, type
-
-Where the exact field names/types differ, add lightweight mapping adapters in Rust prior to returning JSON.
-
-## Roadmap and Phases (Parity-Oriented)
-
-- Phase A: API Surface Parity (Backend)
-  1) Implement wallet_close
-  2) Flesh out wallet_get_transactions from blockchain
-  3) Harden validate_address using C++/CryptoNote validation
-  4) Ensure JSON field names and shapes match fuego-wallet
-
-- Phase B: UX Parity (Frontend)
-  1) Update frontend to call fuego-wallet command names exclusively
-  2) Adjust UI to reflect fuego-wallet information density and wording
-  3) Add error messages and progress states to match upstream
-
-- Phase C: Advanced Features
-  1) Implement transaction-by-hash details
-  2) Subaddress management (if in upstream)
-  3) Messaging (if in upstream) — design, storage, subscription, notifications
-
-- Phase D: Robustness & Security
-  1) Full error mapping from C++ exceptions to structured errors
-  2) Deterministic tests for each command (success/failure paths)
-  3) Performance profiling and async progress reporting
-
-## Testing & Validation
-
-- Contract Tests
-  - Snapshot tests asserting exact JSON field presence and types for each command
-  - Negative tests (invalid address, insufficient funds, node offline)
-
-- Integration Tests
-  - End-to-end: create/open wallet → connect → refresh → send tx → check balance → deposits lifecycle
-
-- Performance Targets
-  - wallet_get_info < 150ms after warm-up (without network calls)
-  - network_get_status < 500ms under normal conditions
-
-## Deliverables
-
-- Backend parity layer (Tauri commands) with documented I/O
-- Frontend updated to use fuego-wallet command names
-- Test suite covering command contracts and typical flows
-- Documentation: API reference and migration notes
+#[tauri::command]
+async fn wallet_get_transactions(
+    limit: Option<u64>,
+    offset: Option<u64>
+) -> Result<Vec<TransactionInfo>, String> {
+    tokio::task::spawn_blocking(move || {
+        // Use WalletUserTransactionsCache for real transaction history
+        let wallet = get_wallet_legacy_instance();
+        let transactions = wallet.get_transactions(
+            offset.unwrap_or(0) as usize,
+            limit.unwrap_or(50) as usize
+        );
+        
+        // Convert WalletLegacyTransaction to our TransactionInfo
+        transactions.into_iter()
+            .map(|tx| TransactionInfo {
+                id: format!("{}", tx.firstTransferId),
+                hash: format!("{:?}", tx.hash),
+                amount: tx.totalAmount as u64,
+                fee: tx.fee,
+                timestamp: tx.timestamp,
+                height: tx.blockHeight,
+                is_confirmed: tx.

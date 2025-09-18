@@ -81,7 +81,10 @@ bool fuego_wallet_connect_node(
     uint16_t port
 );
 
-NetworkStatus fuego_wallet_get_network_status(FuegoWallet wallet);
+NetworkStatus* fuego_wallet_get_network_status(FuegoWallet wallet);
+
+// Memory management for NetworkStatus
+void fuego_wallet_free_network_status(NetworkStatus* status);
 
 // Additional network/wallet operations (stubs to satisfy FFI)
 bool fuego_wallet_disconnect_node(FuegoWallet wallet);

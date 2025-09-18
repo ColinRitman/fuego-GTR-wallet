@@ -306,27 +306,32 @@ extern "C" bool fuego_wallet_connect_node(
     return true;
 }
 
-extern "C" NetworkStatus fuego_wallet_get_network_status(FuegoWallet wallet) {
+extern "C" NetworkStatus* fuego_wallet_get_network_status(FuegoWallet wallet) {
     if (g_real_wallet.get() != wallet) {
-        NetworkStatus status = {};
-        return status;
+        return nullptr;
     }
     
     // Update sync progress
     g_real_wallet->update_sync_progress();
     
-    NetworkStatus status = {};
-    status.is_connected = g_real_wallet->is_connected;
-    status.peer_count = g_real_wallet->peer_count;
-    status.sync_height = g_real_wallet->sync_height;
-    status.network_height = g_real_wallet->network_height;
-    status.is_syncing = g_real_wallet->is_syncing;
+    NetworkStatus* status = new NetworkStatus();
+    status->is_connected = g_real_wallet->is_connected;
+    status->peer_count = g_real_wallet->peer_count;
+    status->sync_height = g_real_wallet->sync_height;
+    status->network_height = g_real_wallet->network_height;
+    status->is_syncing = g_real_wallet->is_syncing;
     
     // Copy connection type
-    strncpy(status.connection_type, g_real_wallet->connection_type.c_str(), sizeof(status.connection_type) - 1);
-    status.connection_type[sizeof(status.connection_type) - 1] = '\0';
+    strncpy(status->connection_type, g_real_wallet->connection_type.c_str(), sizeof(status->connection_type) - 1);
+    status->connection_type[sizeof(status->connection_type) - 1] = '\0';
     
     return status;
+}
+
+extern "C" void fuego_wallet_free_network_status(NetworkStatus* status) {
+    if (status) {
+        delete status;
+    }
 }
 
 extern "C" bool fuego_wallet_disconnect_node(FuegoWallet wallet) {
@@ -478,8 +483,4 @@ extern "C" void fuego_wallet_free_transactions(TransactionList txs) {
     }
 }
 
-extern "C" void fuego_wallet_free_network_status(NetworkStatus* status) {
-    if (status) {
-        delete status;
-    }
-}
+

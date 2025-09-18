@@ -10,6 +10,17 @@ use std::os::raw::{c_char, c_void};
 use std::ptr;
 use crate::utils::error::{WalletError, WalletResult};
 
+#[repr(C)]
+#[derive(Copy, Clone)]
+struct CNetworkStatus {
+    is_connected: bool,
+    peer_count: u64,
+    sync_height: u64,
+    network_height: u64,
+    is_syncing: bool,
+    connection_type: [u8; 256],
+}
+
 // Advanced data structures for CryptoNote integration
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DepositInfo {
@@ -153,8 +164,8 @@ extern "C" {
         port: u16,
     ) -> bool;
     
-    // In C header this returns a struct by value, but our C++ shim returns pointer for FFI safety
-    fn fuego_wallet_get_network_status(wallet: *mut c_void) -> *mut c_void;
+    // Returns C struct by value
+    fn fuego_wallet_get_network_status(wallet: *mut c_void) -> CNetworkStatus;
     fn fuego_wallet_get_network_info(wallet: *mut c_void) -> *mut c_void;
     fn fuego_wallet_disconnect_node(wallet: *mut c_void) -> bool;
     
@@ -442,21 +453,17 @@ impl RealCryptoNoteWallet {
             return Err(WalletError::WalletNotOpen);
         }
         
-        let status_ptr = unsafe { fuego_wallet_get_network_status(self.wallet_ptr) };
-        if status_ptr.is_null() {
-            return Err(WalletError::NetworkError("Failed to get real network status".to_string()));
-        }
-
-        // The C++ layer allocates a NetworkStatus-equivalent struct and returns pointer.
-        // For now, we cannot directly read fields without a matching Rust repr.
-        // As an interim, return connectivity based on internal flag; Phase 2 will parse fields via a C bridge.
+        let status = unsafe { fuego_wallet_get_network_status(self.wallet_ptr) };
+        // Convert CNetworkStatus to JSON
+        let conn_type_cstr_end = status.connection_type.iter().position(|&b| b == 0).unwrap_or(status.connection_type.len());
+        let connection_type = String::from_utf8_lossy(&status.connection_type[..conn_type_cstr_end]).to_string();
         Ok(serde_json::json!({
-            "is_connected": self.is_connected,
-            "peer_count": 0,
-            "sync_height": 0,
-            "network_height": 0,
-            "is_syncing": self.is_connected,
-            "connection_type": if self.is_connected { "daemon" } else { "Disconnected" }
+            "is_connected": status.is_connected,
+            "peer_count": status.peer_count,
+            "sync_height": status.sync_height,
+            "network_height": status.network_height,
+            "is_syncing": status.is_syncing,
+            "connection_type": connection_type
         }))
     }
     

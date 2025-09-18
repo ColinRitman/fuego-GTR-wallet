@@ -430,17 +430,7 @@ window.addEventListener("DOMContentLoaded", () => {
   transactionsEl = document.querySelector("#transactions");
   networkStatusEl = document.querySelector("#network-status");
 
-  // Set up refresh button
-  document.querySelector("#refresh-btn")?.addEventListener("click", refresh);
-  
-  // Set up FFI test button
-  document.querySelector("#test-ffi-btn")?.addEventListener("click", testFFI);
-  
-  // Set up real CryptoNote test button
-  document.querySelector("#test-real-btn")?.addEventListener("click", testRealCryptoNote);
-  
-  // Set up live network data button
-  document.querySelector("#network-data-btn")?.addEventListener("click", fetchLiveNetworkData);
+  // Header buttons removed (refresh/test)
   
   // Set up send transaction button
   document.querySelector("#send-btn")?.addEventListener("click", sendTransaction);

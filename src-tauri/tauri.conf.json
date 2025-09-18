@@ -26,9 +26,9 @@
     "active": true,
     "targets": "all",
     "icon": [
-      "../src/assets/macOSgtr.png",
       "../src/assets/fuegogtr.icns",
-      "../src/assets/fuegogtr.ico"
+      "../src/assets/fuegogtr.ico",
+      "../src/assets/fuegogtr.png"
     ]
   }
 }

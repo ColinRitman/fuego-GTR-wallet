@@ -59,10 +59,7 @@ body {
   font-weight: 600;
 }
 
-.header-actions {
-  display: flex;
-  gap: 0.5rem;
-}
+.header-actions { display: none; }
 
 /* Main Content */
 .main {

@@ -15,6 +15,7 @@ let appSettings: any = null;
 let availableLanguages: any[] = [];
 let notifications: any[] = [];
 let deposits: any[] = [];
+let availableFonts: string[] = [];
 
 // DOM elements
 let walletStatusEl: HTMLElement | null;
@@ -26,6 +27,8 @@ let networkStatusEl: HTMLElement | null;
 // Initialize the application
 async function init() {
   console.log("Initializing Fuego Desktop Wallet...");
+  // Load fonts from assets folder
+  loadAvailableFonts();
   
   // Load initial data
   await loadWalletInfo();
@@ -305,6 +308,33 @@ async function refresh() {
 function updateAdvancedUI() {
   // Optionally render enhancedWalletInfo somewhere if needed
   // For now, keep minimal to avoid DOM elements that don't exist yet
+}
+
+// ===== Fonts =====
+function loadAvailableFonts() {
+  // Hardcode scan of common font filenames in src/assets/fonts
+  // In a more advanced setup, this list can be generated at build-time.
+  availableFonts = [
+    'Orbitron',
+    'Inter',
+    'Roboto',
+    'OpenSans',
+    'Montserrat',
+    'Lato',
+  ];
+  const select = document.querySelector('#font-select') as HTMLSelectElement | null;
+  if (!select) return;
+  select.innerHTML = availableFonts.map(f => `<option value="${f}">${f}</option>`).join('');
+  // Set default to Orbitron
+  select.value = 'Orbitron';
+  applyFont('Orbitron');
+  select.addEventListener('change', () => {
+    applyFont(select.value);
+  });
+}
+
+function applyFont(fontName: string) {
+  document.documentElement.style.setProperty('--app-font-family', `'${fontName}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`);
 }
 
 // Test FFI integration

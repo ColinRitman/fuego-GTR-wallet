@@ -15,6 +15,7 @@
 #include <sstream>
 #include <random>
 #include <chrono>
+#include <algorithm>
 
 // TODO: Include actual CryptoNote headers when integrating
 // #include "WalletLegacy/WalletLegacy.h"
@@ -307,14 +308,14 @@ extern "C" bool fuego_wallet_connect_node(
 
 extern "C" NetworkStatus fuego_wallet_get_network_status(FuegoWallet wallet) {
     if (g_real_wallet.get() != wallet) {
-        NetworkStatus status = {0};
+        NetworkStatus status = {};
         return status;
     }
     
     // Update sync progress
     g_real_wallet->update_sync_progress();
     
-    NetworkStatus status;
+    NetworkStatus status = {};
     status.is_connected = g_real_wallet->is_connected;
     status.peer_count = g_real_wallet->peer_count;
     status.sync_height = g_real_wallet->sync_height;
@@ -326,6 +327,47 @@ extern "C" NetworkStatus fuego_wallet_get_network_status(FuegoWallet wallet) {
     status.connection_type[sizeof(status.connection_type) - 1] = '\0';
     
     return status;
+}
+
+extern "C" bool fuego_wallet_disconnect_node(FuegoWallet wallet) {
+    if (g_real_wallet.get() != wallet) {
+        return false;
+    }
+    g_real_wallet->is_connected = false;
+    g_real_wallet->is_syncing = false;
+    g_real_wallet->peer_count = 0;
+    g_real_wallet->connection_type = "Disconnected";
+    return true;
+}
+
+extern "C" bool fuego_wallet_refresh(FuegoWallet wallet) {
+    if (g_real_wallet.get() != wallet) {
+        return false;
+    }
+    g_real_wallet->update_sync_progress();
+    return true;
+}
+
+extern "C" bool fuego_wallet_rescan_blockchain(FuegoWallet wallet, uint64_t start_height) {
+    if (g_real_wallet.get() != wallet) {
+        return false;
+    }
+    // Simulate rescan by resetting sync height
+    (void)start_height;
+    g_real_wallet->sync_height = 0;
+    g_real_wallet->is_syncing = true;
+    return true;
+}
+
+extern "C" uint64_t fuego_wallet_estimate_transaction_fee(
+    FuegoWallet wallet,
+    const char* address,
+    uint64_t amount,
+    uint64_t mixin
+) {
+    (void)wallet; (void)address; (void)amount; (void)mixin;
+    // Return a simple fixed fee estimate for now (0.01 XFG in atomic units)
+    return 1'000'000;
 }
 
 // Deposit functions

@@ -83,6 +83,17 @@ bool fuego_wallet_connect_node(
 
 NetworkStatus fuego_wallet_get_network_status(FuegoWallet wallet);
 
+// Additional network/wallet operations (stubs to satisfy FFI)
+bool fuego_wallet_disconnect_node(FuegoWallet wallet);
+bool fuego_wallet_refresh(FuegoWallet wallet);
+bool fuego_wallet_rescan_blockchain(FuegoWallet wallet, uint64_t start_height);
+uint64_t fuego_wallet_estimate_transaction_fee(
+    FuegoWallet wallet,
+    const char* address,
+    uint64_t amount,
+    uint64_t mixin
+);
+
 // Deposit operations
 void* fuego_wallet_get_deposits(FuegoWallet wallet);
 void* fuego_wallet_create_deposit(FuegoWallet wallet, uint64_t amount, uint32_t term);

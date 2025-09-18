@@ -10,6 +10,17 @@ use std::os::raw::{c_char, c_void};
 use std::ptr;
 use crate::utils::error::{WalletError, WalletResult};
 
+#[repr(C)]
+#[derive(Copy, Clone)]
+struct CNetworkStatus {
+    is_connected: bool,
+    peer_count: u64,
+    sync_height: u64,
+    network_height: u64,
+    is_syncing: bool,
+    connection_type: [u8; 256],
+}
+
 // Advanced data structures for CryptoNote integration
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DepositInfo {
@@ -153,7 +164,8 @@ extern "C" {
         port: u16,
     ) -> bool;
     
-    fn fuego_wallet_get_network_status(wallet: *mut c_void) -> *mut c_void;
+    // Returns C struct by value
+    fn fuego_wallet_get_network_status(wallet: *mut c_void) -> CNetworkStatus;
     fn fuego_wallet_get_network_info(wallet: *mut c_void) -> *mut c_void;
     fn fuego_wallet_disconnect_node(wallet: *mut c_void) -> bool;
     
@@ -441,25 +453,22 @@ impl RealCryptoNoteWallet {
             return Err(WalletError::WalletNotOpen);
         }
         
-        let status_ptr = unsafe {
-            fuego_wallet_get_network_status(self.wallet_ptr)
-        };
-        
-        if status_ptr.is_null() {
-            return Err(WalletError::NetworkError(
-                "Failed to get real network status".to_string(),
-            ));
+        // Ensure we connect at least once if not connected
+        if !self.is_connected {
+            let _ = self.connect_to_network("fuego.spaceportx.net:18180");
         }
         
-        // Parse real network status from status_ptr
-        // Return actual network data from Fuego blockchain
+        let status = unsafe { fuego_wallet_get_network_status(self.wallet_ptr) };
+        // Convert CNetworkStatus to JSON
+        let conn_type_cstr_end = status.connection_type.iter().position(|&b| b == 0).unwrap_or(status.connection_type.len());
+        let connection_type = String::from_utf8_lossy(&status.connection_type[..conn_type_cstr_end]).to_string();
         Ok(serde_json::json!({
-            "is_connected": self.is_connected,
-            "peer_count": if self.is_connected { 22 } else { 0 }, // Real peer count from fuego.spaceportx.net
-            "sync_height": if self.is_connected { 0 } else { 0 }, // Will be updated from blockchain sync
-            "network_height": if self.is_connected { 964943 } else { 0 }, // Real network height from fuego.spaceportx.net
-            "is_syncing": self.is_connected,
-            "connection_type": if self.is_connected { "Fuego Network (XFG) - fuego.spaceportx.net" } else { "Disconnected" }
+            "is_connected": status.is_connected,
+            "peer_count": status.peer_count,
+            "sync_height": status.sync_height,
+            "network_height": status.network_height,
+            "is_syncing": status.is_syncing,
+            "connection_type": connection_type
         }))
     }
     

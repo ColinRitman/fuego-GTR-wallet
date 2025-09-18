@@ -5,6 +5,16 @@
     <link rel="stylesheet" href="/src/styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Fuego Desktop Wallet</title>
+    <style>
+      @font-face {
+        font-family: 'Orbitron';
+        src: url('/src/assets/fonts/Orbitron.woff2') format('woff2'),
+             url('/src/assets/fonts/Orbitron.woff') format('woff');
+        font-weight: 400 700;
+        font-style: normal;
+        font-display: swap;
+      }
+    </style>
     <script type="module" src="/src/main.ts" defer></script>
   </head>
 
@@ -12,12 +22,13 @@
     <div class="app">
       <header class="header">
         <div class="header-content">
-          <h1>🔥 Fuego Desktop Wallet</h1>
-          <div class="header-actions">
-            <button id="refresh-btn" class="btn btn-secondary">Refresh</button>
-            <button id="test-ffi-btn" class="btn btn-secondary">Test FFI</button>
-            <button id="test-real-btn" class="btn btn-primary">Test Real Fuego</button>
-            <button id="network-data-btn" class="btn btn-accent">Live Network Data</button>
+          <div class="brand">
+            <img src="/src/assets/fuegogtr.png" alt="Fuego GTR" class="brand-logo" />
+            <h1>🔥 Fuego Desktop Wallet</h1>
+          </div>
+          <div class="font-selector">
+            <label for="font-select">Font</label>
+            <select id="font-select"></select>
           </div>
         </div>
       </header>

@@ -15,6 +15,7 @@
 #include <sstream>
 #include <random>
 #include <chrono>
+#include <algorithm>
 
 // TODO: Include actual CryptoNote headers when integrating
 // #include "WalletLegacy/WalletLegacy.h"
@@ -307,14 +308,14 @@ extern "C" bool fuego_wallet_connect_node(
 
 extern "C" NetworkStatus fuego_wallet_get_network_status(FuegoWallet wallet) {
     if (g_real_wallet.get() != wallet) {
-        NetworkStatus status = {0};
+        NetworkStatus status = {};
         return status;
     }
     
     // Update sync progress
     g_real_wallet->update_sync_progress();
     
-    NetworkStatus status;
+    NetworkStatus status = {};
     status.is_connected = g_real_wallet->is_connected;
     status.peer_count = g_real_wallet->peer_count;
     status.sync_height = g_real_wallet->sync_height;

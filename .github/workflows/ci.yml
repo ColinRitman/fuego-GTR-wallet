@@ -68,6 +68,14 @@ jobs:
       - name: Build application
         run: npm run tauri build -- --debug
 
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.os }}-debug
+          path: |
+            src-tauri/target/debug/bundle/**
+          if-no-files-found: warn
+
   security:
     runs-on: ubuntu-latest
     steps:

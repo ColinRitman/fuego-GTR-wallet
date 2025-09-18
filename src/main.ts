@@ -15,6 +15,7 @@ let appSettings: any = null;
 let availableLanguages: any[] = [];
 let notifications: any[] = [];
 let deposits: any[] = [];
+let availableFonts: string[] = [];
 
 // DOM elements
 let walletStatusEl: HTMLElement | null;
@@ -26,6 +27,8 @@ let networkStatusEl: HTMLElement | null;
 // Initialize the application
 async function init() {
   console.log("Initializing Fuego Desktop Wallet...");
+  // Load fonts from assets folder
+  loadAvailableFonts();
   
   // Load initial data
   await loadWalletInfo();
@@ -307,58 +310,34 @@ function updateAdvancedUI() {
   // For now, keep minimal to avoid DOM elements that don't exist yet
 }
 
-// Test FFI integration
-async function testFFI() {
-  try {
-    const result: any = await invoke("test_ffi_integration");
-    console.log("FFI Test Result:", result);
-    
-    // Show result in a simple alert for now
-    const balanceXFG = (result.wallet.balance / 10000000).toFixed(7);
-    alert(`FFI Test Successful!\n\nWallet Address: ${result.wallet.address}\nBalance: ${balanceXFG} XFG\nTransaction Hash: ${result.transaction.hash}`);
-  } catch (error) {
-    console.error("FFI Test Failed:", error);
-    alert(`FFI Test Failed: ${error}`);
-  }
+// ===== Fonts =====
+function loadAvailableFonts() {
+  // Hardcode scan of common font filenames in src/assets/fonts
+  // In a more advanced setup, this list can be generated at build-time.
+  availableFonts = [
+    'Orbitron',
+    'Inter',
+    'Roboto',
+    'OpenSans',
+    'Montserrat',
+    'Lato',
+  ];
+  const select = document.querySelector('#font-select') as HTMLSelectElement | null;
+  if (!select) return;
+  select.innerHTML = availableFonts.map(f => `<option value="${f}">${f}</option>`).join('');
+  // Set default to Orbitron
+  select.value = 'Orbitron';
+  applyFont('Orbitron');
+  select.addEventListener('change', () => {
+    applyFont(select.value);
+  });
 }
 
-// Test real CryptoNote integration
-async function testRealCryptoNote() {
-  try {
-    const result: any = await invoke("test_real_cryptonote");
-    console.log("Real CryptoNote Test Result:", result);
-    
-    // Show result in a detailed alert
-    const networkStatus = result.network.status;
-    const balanceXFG = (result.wallet.balance / 10000000).toFixed(7);
-    alert(`Real Fuego Test Successful!\n\nWallet Address: ${result.wallet.address}\nBalance: ${balanceXFG} XFG\nNetwork Connected: ${networkStatus.is_connected}\nConnection Type: ${networkStatus.connection_type}\nPeer Count: ${networkStatus.peer_count}\nTransaction Hash: ${result.transaction.hash}`);
-  } catch (error) {
-    console.error("Real CryptoNote Test Failed:", error);
-    alert(`Real CryptoNote Test Failed: ${error}`);
-  }
+function applyFont(fontName: string) {
+  document.documentElement.style.setProperty('--app-font-family', `'${fontName}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`);
 }
 
-// Fetch live Fuego network data
-async function fetchLiveNetworkData() {
-  try {
-    const data: any = await invoke("get_fuego_network_data");
-    console.log("Live Network Data:", data);
-    
-    // Show detailed network information
-    const height = data.height;
-    const peers = data.peer_count;
-    const difficulty = data.difficulty;
-    const lastReward = (data.last_block_reward / 10000000).toFixed(7);
-    const version = data.version;
-    const txCount = data.tx_count;
-    const feeAddress = data.fee_address;
-    
-    alert(`🔥 Live Fuego Network Data 🔥\n\nBlock Height: ${height.toLocaleString()}\nPeer Count: ${peers}\nDifficulty: ${difficulty.toLocaleString()}\nLast Block Reward: ${lastReward} XFG\nVersion: ${version}\nTotal Transactions: ${txCount.toLocaleString()}\nFee Address: ${feeAddress.substring(0, 20)}...\n\nSource: fuego.spaceportx.net`);
-  } catch (error) {
-    console.error("Failed to fetch network data:", error);
-    alert(`Failed to fetch network data: ${error}`);
-  }
-}
+// Test functions removed (no longer used)
 
 // Send transaction function
 async function sendTransaction() {
@@ -430,17 +409,7 @@ window.addEventListener("DOMContentLoaded", () => {
   transactionsEl = document.querySelector("#transactions");
   networkStatusEl = document.querySelector("#network-status");
 
-  // Set up refresh button
-  document.querySelector("#refresh-btn")?.addEventListener("click", refresh);
-  
-  // Set up FFI test button
-  document.querySelector("#test-ffi-btn")?.addEventListener("click", testFFI);
-  
-  // Set up real CryptoNote test button
-  document.querySelector("#test-real-btn")?.addEventListener("click", testRealCryptoNote);
-  
-  // Set up live network data button
-  document.querySelector("#network-data-btn")?.addEventListener("click", fetchLiveNetworkData);
+  // Header buttons removed (refresh/test)
   
   // Set up send transaction button
   document.querySelector("#send-btn")?.addEventListener("click", sendTransaction);

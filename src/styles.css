@@ -1,7 +1,7 @@
 /* Fuego Desktop Wallet Styles */
 
 :root {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--app-font-family, 'Orbitron'), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 16px;
   line-height: 1.5;
   font-weight: 400;
@@ -42,14 +42,42 @@ body {
   align-items: center;
 }
 
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-logo {
+  height: 32px;
+  width: auto;
+  display: inline-block;
+}
+
 .header h1 {
   font-size: 1.5rem;
   font-weight: 600;
 }
 
-.header-actions {
+.header-actions { display: none; }
+
+.font-selector {
   display: flex;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 8px;
+}
+
+.font-selector label {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.font-selector select {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.1);
+  color: #fff;
 }
 
 /* Main Content */

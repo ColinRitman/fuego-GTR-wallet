@@ -377,14 +377,15 @@ async fn get_notifications() -> Result<Vec<serde_json::Value>, String> {
 async fn get_network_status() -> Result<serde_json::Value, String> {
     let mut real_wallet = RealCryptoNoteWallet::new();
     
-    // Try to open wallet and connect to network
-    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+    let _ = real_wallet
+        .open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
         .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
     
-    // Connect to Fuego network
-    let _ = connect_to_fuego_network(&mut real_wallet);
+    // Only connect if not already connected
+    if let Err(e) = connect_to_fuego_network(&mut real_wallet) {
+        log::warn!("Network connect attempt failed: {}", e);
+    }
     
-    // Get real network status
     real_wallet.get_network_status().map_err(|e| e.to_string())
 }
 

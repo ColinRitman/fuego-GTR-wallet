@@ -81,6 +81,7 @@ pub fn run() {
             wallet_get_address,
             wallet_get_transactions,
             wallet_send_transaction,
+            wallet_close,
             wallet_refresh,
             wallet_rescan,
             network_get_status,
@@ -369,90 +370,7 @@ async fn get_notifications() -> Result<Vec<serde_json::Value>, String> {
     }
 }
 
-fn now_ts() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or(Duration::from_secs(0)).as_secs()
-}
-
-fn ensure_main_deposit_address(address: &str) {
-    if let Some(store) = DEPOSIT_ADDRESSES.get() {
-        let mut guard = store.lock().unwrap();
-        if !guard.iter().any(|a| a.is_main) {
-            guard.push(DepositAddressRecord {
-                address: address.to_string(),
-                label: Some("Main Address".to_string()),
-                is_main: true,
-                created_at: now_ts(),
-                transaction_count: 0,
-                total_received: 0,
-            });
-        }
-    }
-}
-
-/// List deposit addresses
-#[tauri::command]
-async fn get_deposit_addresses() -> Result<Vec<serde_json::Value>, String> {
-    // Ensure main address exists
-    let mut real_wallet = RealCryptoNoteWallet::new();
-    let _ = real_wallet
-        .open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
-        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
-    if let Ok(addr) = real_wallet.get_address() {
-        ensure_main_deposit_address(&addr);
-    }
-
-    let store = DEPOSIT_ADDRESSES.get().ok_or("Deposit store not initialized")?;
-    let guard = store.lock().unwrap();
-    let list: Vec<serde_json::Value> = guard.iter().cloned().map(|r| serde_json::json!({
-        "address": r.address,
-        "label": r.label.unwrap_or_else(|| "".to_string()),
-        "is_main": r.is_main,
-        "created_at": r.created_at,
-        "transaction_count": r.transaction_count,
-        "total_received": r.total_received,
-    })).collect();
-    Ok(list)
-}
-
-/// Generate a new deposit address (placeholder subaddress)
-#[tauri::command]
-async fn generate_deposit_address(label: Option<String>) -> Result<serde_json::Value, String> {
-    let store = DEPOSIT_ADDRESSES.get().ok_or("Deposit store not initialized")?;
-    let mut guard = store.lock().unwrap();
-
-    // Generate pseudo address
-    let rnd = uuid::Uuid::new_v4().simple().to_string();
-    let new_addr = format!("fire{}{}", &rnd[..16], &rnd[16..32]);
-    let record = DepositAddressRecord {
-        address: new_addr.clone(),
-        label: label.clone(),
-        is_main: false,
-        created_at: now_ts(),
-        transaction_count: 0,
-        total_received: 0,
-    };
-    guard.push(record);
-
-    Ok(serde_json::json!({
-        "address": new_addr,
-        "label": label.unwrap_or_default(),
-    }))
-}
-
-/// Get deposit transactions (placeholder)
-#[tauri::command]
-async fn get_deposit_transactions() -> Result<Vec<serde_json::Value>, String> {
-    let store = DEPOSIT_TRANSACTIONS.get().ok_or("Deposit tx store not initialized")?;
-    let guard = store.lock().unwrap();
-    let list: Vec<serde_json::Value> = guard.iter().cloned().map(|t| serde_json::json!({
-        "amount": t.amount,
-        "timestamp": t.timestamp,
-        "from_address": t.from_address,
-        "hash": t.hash,
-        "is_confirmed": t.is_confirmed,
-    })).collect();
-    Ok(list)
-}
+// (Removed legacy deposit-address placeholder functions)
 
 /// Get network status (using real CryptoNote)
 #[tauri::command]
@@ -487,6 +405,15 @@ async fn wallet_open(file_path: String, password: String) -> Result<String, Stri
     wallet.open_wallet(&file_path, &password).map_err(|e| e.to_string())?;
     let address = wallet.get_address().map_err(|e| e.to_string())?;
     Ok(address)
+}
+
+#[tauri::command]
+async fn wallet_close() -> Result<(), String> {
+    let mut wallet = RealCryptoNoteWallet::new();
+    // Best-effort: open then close. In a real implementation, use a shared instance.
+    let _ = wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password");
+    wallet.close_wallet();
+    Ok(())
 }
 
 #[tauri::command]

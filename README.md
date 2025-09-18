@@ -1,4 +1,4 @@
-# 🔥 Fuego GTR Wallet
+# 🔥 Fuego Wallet GTR
 
 [![Build Status](https://github.com/colinritman/fuego-GTR-wallet/workflows/CI%20-%20FuegoGT%20Wallet/badge.svg)](https://github.com/colinritman/fuego-GTR-wallet/actions)
 [![Release](https://img.shields.io/github/v/release/fuego-wallet/fuego-GTR-wallet)](https://github.com/fuego-wallet/fuego-GTR-wallet/releases)

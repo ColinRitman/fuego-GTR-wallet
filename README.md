@@ -1,11 +1,13 @@
-# 🔥 FuegoGT Wallet
+# 🔥 Fuego GTR Wallet
 
-[![Build Status](https://github.com/fuego-wallet/fuego-GTR-wallet/workflows/CI%20-%20FuegoGT%20Wallet/badge.svg)](https://github.com/fuego-wallet/fuego-GTR-wallet/actions)
+[![Build Status](https://github.com/colinritman/fuego-GTR-wallet/workflows/CI%20-%20FuegoGT%20Wallet/badge.svg)](https://github.com/colinritman/fuego-GTR-wallet/actions)
 [![Release](https://img.shields.io/github/v/release/fuego-wallet/fuego-GTR-wallet)](https://github.com/fuego-wallet/fuego-GTR-wallet/releases)
 [![License](https://img.shields.io/github/license/fuego-wallet/fuego-GTR-wallet)](LICENSE)
 [![Security](https://img.shields.io/badge/security-audited-green.svg)](SECURITY.md)
+<img src="https://github.com/ColinRitman/fuego-GTR-wallet/blob/34e6cc63d7d1183dab971113c6bc368d420ef8ce/src/assets/macOSgtr.png"></img>
 
-**FuegoGT Wallet** is a modern, secure, and feature-rich desktop cryptocurrency wallet for the Fuego (XFG) blockchain. Built with Tauri, Rust, and modern web technologies, it provides a native desktop experience with advanced security features and comprehensive functionality.
+
+**Fuego GTR Wallet** is a modern, secure, and feature-rich desktop cryptocurrency wallet for the Fuego (XFG) privacy blockchain banking network. Built with Tauri, Rust, and modern web technologies, it provides a native desktop experience with advanced security features and comprehensive functionality.
 
 ## ✨ Features
 
@@ -220,28 +222,28 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+## 🤙 Support
 
-- **Documentation**: [Wiki](https://github.com/fuego-wallet/fuego-GTR-wallet/wiki)
-- **Issues**: [GitHub Issues](https://github.com/fuego-wallet/fuego-GTR-wallet/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/fuego-wallet/fuego-GTR-wallet/discussions)
-- **Community**: [Fuego Discord](https://discord.gg/fuego)
+- **Documentation**: [Wiki](https://github.com/colinritman/fuego-GTR-wallet/wiki)
+- **Issues**: [GitHub Issues](https://github.com/colinritman/fuego-GTR-wallet/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/colinritman/fuego-GTR-wallet/discussions)
+- **Community**: [Fuego Discord](https://discord.usexfg.org)
 
 ## 🙏 Acknowledgments
 
-- **Tauri Team** - For the amazing desktop app framework
-- **CryptoNote Community** - For the underlying blockchain technology
-- **Fuego Network** - For the cryptocurrency and ecosystem
+- **Tauri Team** - For desktop app framework
+- **CryptoNote Community** - For underlying privacy blockchain technology
+- **Fuego Network** - For cryptocurrency network & XFG banking ecosystem
 - **Contributors** - All the amazing people who contribute to this project
 
 ## 📊 Project Status
 
 - **Version**: 1.0.0
 - **Status**: Active Development
-- **Platforms**: Windows, macOS, Linux
+- **Platforms**: Windows, macOS, *Nix
 - **Languages**: 11 supported
 - **Security**: Audited and secure
 
 ---
 
-**Made with ❤️ by the Fuego Community**
+**Made with 🔥 by Fuego Mob**

@@ -26,7 +26,7 @@
     "active": true,
     "targets": "all",
     "icon": [
-      "../src/assets/fuegogtr.png",
+      "../src/assets/macOSgtr.png",
       "../src/assets/fuegogtr.icns",
       "../src/assets/fuegogtr.ico"
     ]

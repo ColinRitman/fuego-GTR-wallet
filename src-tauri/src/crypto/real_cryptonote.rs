@@ -453,6 +453,11 @@ impl RealCryptoNoteWallet {
             return Err(WalletError::WalletNotOpen);
         }
         
+        // Ensure we connect at least once if not connected
+        if !self.is_connected {
+            let _ = self.connect_to_network("fuego.spaceportx.net:18180");
+        }
+        
         let status = unsafe { fuego_wallet_get_network_status(self.wallet_ptr) };
         // Convert CNetworkStatus to JSON
         let conn_type_cstr_end = status.connection_type.iter().position(|&b| b == 0).unwrap_or(status.connection_type.len());

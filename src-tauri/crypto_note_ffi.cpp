@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <cstring>
+#include <ctime>
 
 // TODO: Include actual CryptoNote headers when integrating
 // #include "WalletLegacy/WalletLegacy.h"
@@ -138,11 +139,11 @@ extern "C" TransactionResult crypto_note_wallet_send_transaction(
     // For now, return mock result
     
     MockTransaction* tx = new MockTransaction();
-    tx->id = "tx_mock_" + std::to_string(time(nullptr));
-    tx->hash = "mock_hash_" + std::to_string(time(nullptr));
+    tx->id = std::string("tx_mock_") + std::to_string(static_cast<long long>(std::time(nullptr)));
+    tx->hash = std::string("mock_hash_") + std::to_string(static_cast<long long>(std::time(nullptr)));
     tx->amount = -static_cast<int64_t>(amount);
     tx->fee = 1000000;
-    tx->timestamp = time(nullptr);
+    tx->timestamp = static_cast<uint64_t>(std::time(nullptr));
     tx->confirmations = 0;
     tx->is_confirmed = false;
     tx->is_incoming = false;

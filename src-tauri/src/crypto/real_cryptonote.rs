@@ -113,6 +113,104 @@ pub struct MiningInfo {
     pub threads: u32,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct AddressBookEntry {
+    pub address: String,
+    pub label: String,
+    pub description: String,
+    pub created_time: u64,
+    pub last_used_time: u64,
+    pub use_count: u32,
+}
+
+// FFI type definitions for C++ structs
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct WalletInfo {
+    pub address: [c_char; 256],
+    pub balance: u64,
+    pub unlocked_balance: u64,
+    pub locked_balance: u64,
+    pub total_received: u64,
+    pub total_sent: u64,
+    pub transaction_count: u32,
+    pub is_synced: bool,
+    pub sync_height: u64,
+    pub network_height: u64,
+    pub daemon_height: u64,
+    pub is_connected: bool,
+    pub peer_count: u32,
+    pub last_block_time: u64,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct TransactionInfo {
+    pub id: [c_char; 256],
+    pub hash: [c_char; 256],
+    pub amount: i64,
+    pub fee: u64,
+    pub height: u64,
+    pub timestamp: u64,
+    pub confirmations: u32,
+    pub is_confirmed: bool,
+    pub is_pending: bool,
+    pub payment_id: [c_char; 256],
+    pub destination_addresses: [c_char; 1024],
+    pub source_addresses: [c_char; 1024],
+    pub unlock_time: u64,
+    pub extra: [c_char; 1024],
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct NetworkInfo {
+    pub is_connected: bool,
+    pub peer_count: u32,
+    pub sync_height: u64,
+    pub network_height: u64,
+    pub is_syncing: bool,
+    pub connection_type: [c_char; 256],
+    pub last_sync_time: u64,
+    pub sync_speed: f64,
+    pub estimated_sync_time: u64,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct BlockInfo {
+    pub height: u64,
+    pub hash: [c_char; 256],
+    pub timestamp: u64,
+    pub difficulty: u64,
+    pub reward: u64,
+    pub size: u32,
+    pub transaction_count: u32,
+    pub is_main_chain: bool,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct MiningInfoFFI {
+    pub is_mining: bool,
+    pub hashrate: f64,
+    pub difficulty: u64,
+    pub block_reward: u64,
+    pub pool_address: [c_char; 256],
+    pub worker_name: [c_char; 256],
+    pub threads: u32,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct SyncProgress {
+    pub current_height: u64,
+    pub total_height: u64,
+    pub progress_percentage: f32,
+    pub estimated_time_remaining: u64,
+    pub is_syncing: bool,
+}
+
 // FFI bindings for real CryptoNote operations
 extern "C" {
     // Wallet operations
@@ -164,65 +262,66 @@ extern "C" {
     fn fuego_wallet_disconnect_node(wallet: *mut c_void) -> bool;
 
     // Advanced wallet operations
-    fn fuego_wallet_get_wallet_info(wallet: *mut c_void) -> *mut c_void;
+    fn fuego_wallet_get_wallet_info(wallet: *mut c_void) -> *mut WalletInfo;
     fn fuego_wallet_refresh(wallet: *mut c_void) -> bool;
     fn fuego_wallet_rescan_blockchain(wallet: *mut c_void, start_height: u64) -> bool;
     fn fuego_wallet_set_refresh_from_block_height(wallet: *mut c_void, height: u64) -> bool;
 
     // Transaction management
-    fn fuego_wallet_get_transaction_by_hash(
-        wallet: *mut c_void,
-        tx_hash: *const c_char,
-    ) -> *mut c_void;
-    fn fuego_wallet_get_transaction_by_id(wallet: *mut c_void, tx_id: *const c_char)
-        -> *mut c_void;
+    fn fuego_wallet_get_transaction_by_hash(wallet: *mut c_void, tx_hash: *const c_char) -> *mut TransactionInfo;
+    fn fuego_wallet_get_transaction_by_id(wallet: *mut c_void, tx_id: *const c_char) -> *mut TransactionInfo;
     fn fuego_wallet_cancel_transaction(wallet: *mut c_void, tx_id: *const c_char) -> bool;
-    fn fuego_wallet_estimate_transaction_fee(
-        wallet: *mut c_void,
-        address: *const c_char,
-        amount: u64,
-        mixin: u64,
-    ) -> u64;
 
     // Address management
     fn fuego_wallet_create_address(wallet: *mut c_void, label: *const c_char) -> *mut c_char;
     fn fuego_wallet_get_addresses(wallet: *mut c_void) -> *mut c_void;
     fn fuego_wallet_delete_address(wallet: *mut c_void, address: *const c_char) -> bool;
-    fn fuego_wallet_set_address_label(
-        wallet: *mut c_void,
-        address: *const c_char,
-        label: *const c_char,
-    ) -> bool;
+    fn fuego_wallet_set_address_label(wallet: *mut c_void, address: *const c_char, label: *const c_char) -> bool;
 
     // Blockchain operations
-    fn fuego_wallet_get_block_info(wallet: *mut c_void, height: u64) -> *mut c_void;
-    fn fuego_wallet_get_block_by_hash(
-        wallet: *mut c_void,
-        block_hash: *const c_char,
-    ) -> *mut c_void;
+    fn fuego_wallet_get_block_info(wallet: *mut c_void, height: u64) -> *mut BlockInfo;
+    fn fuego_wallet_get_block_by_hash(wallet: *mut c_void, block_hash: *const c_char) -> *mut BlockInfo;
     fn fuego_wallet_get_current_block_height(wallet: *mut c_void) -> u64;
     fn fuego_wallet_get_block_timestamp(wallet: *mut c_void, height: u64) -> u64;
 
     // Mining operations
     fn fuego_wallet_start_mining(wallet: *mut c_void, threads: u32, background: bool) -> bool;
     fn fuego_wallet_stop_mining(wallet: *mut c_void) -> bool;
-    fn fuego_wallet_get_mining_info(wallet: *mut c_void) -> *mut c_void;
-    fn fuego_wallet_set_mining_pool(
-        wallet: *mut c_void,
-        pool_address: *const c_char,
-        worker_name: *const c_char,
-    ) -> bool;
+    fn fuego_wallet_get_mining_info(wallet: *mut c_void) -> *mut MiningInfo;
+    fn fuego_wallet_set_mining_pool(wallet: *mut c_void, pool_address: *const c_char, worker_name: *const c_char) -> bool;
+
+    // Memory management
+    fn fuego_wallet_free_wallet_info(info: *mut WalletInfo);
+    fn fuego_wallet_free_transaction_info(tx: *mut TransactionInfo);
+    fn fuego_wallet_free_network_info(info: *mut NetworkInfo);
+    fn fuego_wallet_free_block_info(block: *mut BlockInfo);
+    fn fuego_wallet_free_mining_info(info: *mut MiningInfo);
+    fn fuego_wallet_free_addresses(addresses: *mut c_void);
+
+    // Sync progress functions
+    fn fuego_wallet_get_sync_progress(wallet: *mut c_void) -> *mut SyncProgress;
+    fn fuego_wallet_free_sync_progress(progress: *mut SyncProgress);
+    fn fuego_wallet_get_sync_status_json(wallet: *mut c_void) -> *mut c_char;
+    fn fuego_wallet_free_sync_status_json(json_str: *mut c_char);
+
+    // Address book management
+    fn fuego_wallet_add_address_book_entry(wallet: *mut c_void, address: *const c_char, label: *const c_char, description: *const c_char) -> bool;
+    fn fuego_wallet_remove_address_book_entry(wallet: *mut c_void, address: *const c_char) -> bool;
+    fn fuego_wallet_update_address_book_entry(wallet: *mut c_void, address: *const c_char, label: *const c_char, description: *const c_char) -> bool;
+    fn fuego_wallet_get_address_book(wallet: *mut c_void) -> *mut c_void;
+    fn fuego_wallet_free_address_book(address_book_ptr: *mut c_void);
+    fn fuego_wallet_mark_address_used(wallet: *mut c_void, address: *const c_char) -> bool;
+    fn fuego_wallet_get_address_book_entry(wallet: *mut c_void, address: *const c_char) -> *mut c_char;
+    fn fuego_wallet_free_address_book_entry(json_str: *mut c_char);
 
     // Utility functions
     fn fuego_wallet_free_string(s: *mut c_char);
     fn fuego_wallet_free_transactions(txs: *mut c_void);
     fn fuego_wallet_free_network_status(status: *mut c_void);
-    fn fuego_wallet_free_wallet_info(info: *mut c_void);
-    fn fuego_wallet_free_network_info(info: *mut c_void);
-    fn fuego_wallet_free_transaction_info(tx: *mut c_void);
-    fn fuego_wallet_free_block_info(block: *mut c_void);
-    fn fuego_wallet_free_mining_info(info: *mut c_void);
-    fn fuego_wallet_free_addresses(addresses: *mut c_void);
+
+    // Transaction history
+    fn fuego_wallet_get_transaction_history(wallet: *mut c_void, limit: u64, offset: u64) -> *mut TransactionInfo;
+    fn fuego_wallet_free_transaction_history(tx: *mut TransactionInfo);
 }
 
 /// Real CryptoNote wallet implementation
@@ -517,31 +616,35 @@ impl RealCryptoNoteWallet {
             ));
         }
 
-        // TODO: Parse real wallet info from C++ data structure
-        // For now, return mock data with real balance
-        let balance = unsafe { fuego_wallet_get_balance(self.wallet_ptr) };
-        let unlocked_balance = unsafe { fuego_wallet_get_unlocked_balance(self.wallet_ptr) };
+        let wallet_info = unsafe { &*info_ptr };
+
+        // Convert C string to Rust string
+        let address = unsafe { CStr::from_ptr(wallet_info.address.as_ptr()) }
+            .to_string_lossy()
+            .to_string();
+
+        let result = WalletInfo {
+            address,
+            balance: wallet_info.balance,
+            unlocked_balance: wallet_info.unlocked_balance,
+            locked_balance: wallet_info.locked_balance,
+            total_received: wallet_info.total_received,
+            total_sent: wallet_info.total_sent,
+            transaction_count: wallet_info.transaction_count,
+            is_synced: wallet_info.is_synced,
+            sync_height: wallet_info.sync_height,
+            network_height: wallet_info.network_height,
+            daemon_height: wallet_info.daemon_height,
+            is_connected: wallet_info.is_connected,
+            peer_count: wallet_info.peer_count,
+            last_block_time: Some(wallet_info.last_block_time),
+        };
 
         unsafe {
             fuego_wallet_free_wallet_info(info_ptr);
         }
 
-        Ok(WalletInfo {
-            address: "FuegoWallet_Address_Placeholder".to_string(),
-            balance,
-            unlocked_balance,
-            locked_balance: balance - unlocked_balance,
-            total_received: balance,
-            total_sent: 0,
-            transaction_count: 0,
-            is_synced: true,
-            sync_height: 0,
-            network_height: 0,
-            daemon_height: 0,
-            is_connected: self.is_connected,
-            peer_count: 0,
-            last_block_time: None,
-        })
+        Ok(result)
     }
 
     /// Get detailed network information
@@ -558,22 +661,30 @@ impl RealCryptoNoteWallet {
             ));
         }
 
-        // TODO: Parse real network info from C++ data structure
+        let network_info = unsafe { &*info_ptr };
+
+        // Convert C string to Rust string
+        let connection_type = unsafe { CStr::from_ptr(network_info.connection_type.as_ptr()) }
+            .to_string_lossy()
+            .to_string();
+
+        let result = NetworkInfo {
+            is_connected: network_info.is_connected,
+            peer_count: network_info.peer_count,
+            sync_height: network_info.sync_height,
+            network_height: network_info.network_height,
+            is_syncing: network_info.is_syncing,
+            connection_type,
+            last_sync_time: Some(network_info.last_sync_time),
+            sync_speed: network_info.sync_speed,
+            estimated_sync_time: Some(network_info.estimated_sync_time),
+        };
+
         unsafe {
             fuego_wallet_free_network_info(info_ptr);
         }
 
-        Ok(NetworkInfo {
-            is_connected: self.is_connected,
-            peer_count: 0,
-            sync_height: 0,
-            network_height: 0,
-            is_syncing: false,
-            connection_type: "daemon".to_string(),
-            last_sync_time: None,
-            sync_speed: 0.0,
-            estimated_sync_time: None,
-        })
+        Ok(result)
     }
 
     /// Refresh wallet data from blockchain
@@ -874,6 +985,467 @@ impl RealCryptoNoteWallet {
         }
 
         Ok(tx_hash)
+    }
+
+    /// Get transaction by hash
+    pub fn get_transaction_by_hash(&self, tx_hash: &str) -> WalletResult<TransactionInfo> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let tx_hash_c = CString::new(tx_hash)?;
+        let tx_ptr = unsafe { fuego_wallet_get_transaction_by_hash(self.wallet_ptr, tx_hash_c.as_ptr()) };
+
+        if tx_ptr.is_null() {
+            return Err(WalletError::TransactionFailed(
+                "Transaction not found".to_string(),
+            ));
+        }
+
+        let tx_info = unsafe { &*tx_ptr };
+
+        // Convert C strings to Rust strings
+        let id = unsafe { CStr::from_ptr(tx_info.id.as_ptr()) }.to_string_lossy().to_string();
+        let hash = unsafe { CStr::from_ptr(tx_info.hash.as_ptr()) }.to_string_lossy().to_string();
+        let payment_id = if tx_info.payment_id[0] != 0 {
+            Some(unsafe { CStr::from_ptr(tx_info.payment_id.as_ptr()) }.to_string_lossy().to_string())
+        } else {
+            None
+        };
+
+        let destination_addresses = if tx_info.destination_addresses[0] != 0 {
+            vec![unsafe { CStr::from_ptr(tx_info.destination_addresses.as_ptr()) }.to_string_lossy().to_string()]
+        } else {
+            vec![]
+        };
+
+        let source_addresses = if tx_info.source_addresses[0] != 0 {
+            vec![unsafe { CStr::from_ptr(tx_info.source_addresses.as_ptr()) }.to_string_lossy().to_string()]
+        } else {
+            vec![]
+        };
+
+        let extra = if tx_info.extra[0] != 0 {
+            Some(unsafe { CStr::from_ptr(tx_info.extra.as_ptr()) }.to_string_lossy().to_string())
+        } else {
+            None
+        };
+
+        let result = TransactionInfo {
+            id,
+            hash,
+            amount: tx_info.amount,
+            fee: tx_info.fee,
+            height: tx_info.height,
+            timestamp: tx_info.timestamp,
+            confirmations: tx_info.confirmations,
+            is_confirmed: tx_info.is_confirmed,
+            is_pending: tx_info.is_pending,
+            payment_id,
+            destination_addresses,
+            source_addresses,
+            unlock_time: Some(tx_info.unlock_time),
+            extra,
+        };
+
+        unsafe {
+            fuego_wallet_free_transaction_info(tx_ptr);
+        }
+
+        Ok(result)
+    }
+
+    /// Create new address with label
+    pub fn create_address(&self, label: Option<&str>) -> WalletResult<String> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let label_c = match label {
+            Some(l) => CString::new(l)?,
+            None => CString::new("")?,
+        };
+
+        let address_ptr = unsafe { fuego_wallet_create_address(self.wallet_ptr, label_c.as_ptr()) };
+
+        if address_ptr.is_null() {
+            return Err(WalletError::Generic("Failed to create address".to_string()));
+        }
+
+        let address = unsafe { CStr::from_ptr(address_ptr).to_string_lossy().to_string() };
+
+        unsafe {
+            fuego_wallet_free_string(address_ptr);
+        }
+
+        Ok(address)
+    }
+
+    /// Get block information by height
+    pub fn get_block_info(&self, height: u64) -> WalletResult<BlockInfo> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let block_ptr = unsafe { fuego_wallet_get_block_info(self.wallet_ptr, height) };
+
+        if block_ptr.is_null() {
+            return Err(WalletError::Generic("Block not found".to_string()));
+        }
+
+        let block_info = unsafe { &*block_ptr };
+
+        // Convert C string to Rust string
+        let hash = unsafe { CStr::from_ptr(block_info.hash.as_ptr()) }.to_string_lossy().to_string();
+
+        let result = BlockInfo {
+            height: block_info.height,
+            hash,
+            timestamp: block_info.timestamp,
+            difficulty: block_info.difficulty,
+            reward: block_info.reward,
+            size: block_info.size,
+            transaction_count: block_info.transaction_count,
+            is_main_chain: block_info.is_main_chain,
+        };
+
+        unsafe {
+            fuego_wallet_free_block_info(block_ptr);
+        }
+
+        Ok(result)
+    }
+
+    /// Start mining
+    pub fn start_mining(&mut self, threads: u32, background: bool) -> WalletResult<()> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let success = unsafe { fuego_wallet_start_mining(self.wallet_ptr, threads, background) };
+
+        if !success {
+            return Err(WalletError::Generic("Failed to start mining".to_string()));
+        }
+
+        Ok(())
+    }
+
+    /// Stop mining
+    pub fn stop_mining(&mut self) -> WalletResult<()> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let success = unsafe { fuego_wallet_stop_mining(self.wallet_ptr) };
+
+        if !success {
+            return Err(WalletError::Generic("Failed to stop mining".to_string()));
+        }
+
+        Ok(())
+    }
+
+    /// Get mining information
+    pub fn get_mining_info(&self) -> WalletResult<MiningInfo> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let info_ptr = unsafe { fuego_wallet_get_mining_info(self.wallet_ptr) };
+
+        if info_ptr.is_null() {
+            return Err(WalletError::Generic("Failed to get mining information".to_string()));
+        }
+
+        let mining_info = unsafe { &*info_ptr };
+
+        // Convert C strings to Rust strings
+        let pool_address = if mining_info.pool_address[0] != 0 {
+            Some(unsafe { CStr::from_ptr(mining_info.pool_address.as_ptr()) }.to_string_lossy().to_string())
+        } else {
+            None
+        };
+
+        let worker_name = if mining_info.worker_name[0] != 0 {
+            Some(unsafe { CStr::from_ptr(mining_info.worker_name.as_ptr()) }.to_string_lossy().to_string())
+        } else {
+            None
+        };
+
+        let result = MiningInfo {
+            is_mining: mining_info.is_mining,
+            hashrate: mining_info.hashrate,
+            difficulty: mining_info.difficulty,
+            block_reward: mining_info.block_reward,
+            pool_address,
+            worker_name,
+            threads: mining_info.threads,
+        };
+
+        unsafe {
+            fuego_wallet_free_mining_info(info_ptr);
+        }
+
+        Ok(result)
+    }
+
+    /// Get transaction history from blockchain
+    pub fn get_transaction_history(&self, limit: u64, offset: u64) -> WalletResult<Vec<TransactionInfo>> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let mut transactions = Vec::new();
+
+        // Get transactions from the blockchain
+        for i in 0..limit {
+            let tx_ptr = unsafe { fuego_wallet_get_transaction_history(self.wallet_ptr, 1, offset + i) };
+
+            if tx_ptr.is_null() {
+                break; // No more transactions
+            }
+
+            let tx_info = unsafe { &*tx_ptr };
+
+            // Convert C strings to Rust strings
+            let id = unsafe { CStr::from_ptr(tx_info.id.as_ptr()) }.to_string_lossy().to_string();
+            let hash = unsafe { CStr::from_ptr(tx_info.hash.as_ptr()) }.to_string_lossy().to_string();
+            let payment_id = if tx_info.payment_id[0] != 0 {
+                Some(unsafe { CStr::from_ptr(tx_info.payment_id.as_ptr()) }.to_string_lossy().to_string())
+            } else {
+                None
+            };
+
+            let destination_addresses = if tx_info.destination_addresses[0] != 0 {
+                vec![unsafe { CStr::from_ptr(tx_info.destination_addresses.as_ptr()) }.to_string_lossy().to_string()]
+            } else {
+                vec![]
+            };
+
+            let source_addresses = if tx_info.source_addresses[0] != 0 {
+                vec![unsafe { CStr::from_ptr(tx_info.source_addresses.as_ptr()) }.to_string_lossy().to_string()]
+            } else {
+                vec![]
+            };
+
+            let extra = if tx_info.extra[0] != 0 {
+                Some(unsafe { CStr::from_ptr(tx_info.extra.as_ptr()) }.to_string_lossy().to_string())
+            } else {
+                None
+            };
+
+            let transaction = TransactionInfo {
+                id,
+                hash,
+                amount: tx_info.amount,
+                fee: tx_info.fee,
+                height: tx_info.height,
+                timestamp: tx_info.timestamp,
+                confirmations: tx_info.confirmations,
+                is_confirmed: tx_info.is_confirmed,
+                is_pending: tx_info.is_pending,
+                payment_id,
+                destination_addresses,
+                source_addresses,
+                unlock_time: Some(tx_info.unlock_time),
+                extra,
+            };
+
+            transactions.push(transaction);
+
+            unsafe {
+                fuego_wallet_free_transaction_history(tx_ptr);
+            }
+        }
+
+        Ok(transactions)
+    }
+
+    /// Get sync progress information
+    pub fn get_sync_progress(&self) -> WalletResult<crate::crypto::real_cryptonote::SyncProgress> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let progress_ptr = unsafe { fuego_wallet_get_sync_progress(self.wallet_ptr) };
+
+        if progress_ptr.is_null() {
+            return Err(WalletError::Generic("Failed to get sync progress".to_string()));
+        }
+
+        let progress = unsafe { *progress_ptr };
+
+        unsafe {
+            fuego_wallet_free_sync_progress(progress_ptr);
+        }
+
+        Ok(progress)
+    }
+
+    /// Get sync status as JSON string
+    pub fn get_sync_status_json(&self) -> WalletResult<String> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let json_ptr = unsafe { fuego_wallet_get_sync_status_json(self.wallet_ptr) };
+
+        if json_ptr.is_null() {
+            return Err(WalletError::Generic("Failed to get sync status JSON".to_string()));
+        }
+
+        let json_str = unsafe { CStr::from_ptr(json_ptr).to_string_lossy().to_string() };
+
+        unsafe {
+            fuego_wallet_free_sync_status_json(json_ptr);
+        }
+
+        Ok(json_str)
+    }
+
+    /// Add address to address book
+    pub fn add_address_book_entry(&self, address: &str, label: Option<&str>, description: Option<&str>) -> WalletResult<()> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let address_c = CString::new(address)?;
+        let label_c = match label {
+            Some(l) => CString::new(l)?,
+            None => CString::new("")?,
+        };
+        let description_c = match description {
+            Some(d) => CString::new(d)?,
+            None => CString::new("")?,
+        };
+
+        let success = unsafe {
+            fuego_wallet_add_address_book_entry(
+                self.wallet_ptr,
+                address_c.as_ptr(),
+                label_c.as_ptr(),
+                description_c.as_ptr()
+            )
+        };
+
+        if success {
+            Ok(())
+        } else {
+            Err(WalletError::Generic("Failed to add address to address book".to_string()))
+        }
+    }
+
+    /// Remove address from address book
+    pub fn remove_address_book_entry(&self, address: &str) -> WalletResult<()> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let address_c = CString::new(address)?;
+
+        let success = unsafe {
+            fuego_wallet_remove_address_book_entry(self.wallet_ptr, address_c.as_ptr())
+        };
+
+        if success {
+            Ok(())
+        } else {
+            Err(WalletError::Generic("Failed to remove address from address book".to_string()))
+        }
+    }
+
+    /// Update address book entry
+    pub fn update_address_book_entry(&self, address: &str, label: Option<&str>, description: Option<&str>) -> WalletResult<()> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let address_c = CString::new(address)?;
+        let label_c = match label {
+            Some(l) => CString::new(l)?,
+            None => CString::new("")?,
+        };
+        let description_c = match description {
+            Some(d) => CString::new(d)?,
+            None => CString::new("")?,
+        };
+
+        let success = unsafe {
+            fuego_wallet_update_address_book_entry(
+                self.wallet_ptr,
+                address_c.as_ptr(),
+                label_c.as_ptr(),
+                description_c.as_ptr()
+            )
+        };
+
+        if success {
+            Ok(())
+        } else {
+            Err(WalletError::Generic("Failed to update address book entry".to_string()))
+        }
+    }
+
+    /// Get address book entries
+    pub fn get_address_book(&self) -> WalletResult<Vec<AddressBookEntry>> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let address_book_ptr = unsafe { fuego_wallet_get_address_book(self.wallet_ptr) };
+
+        if address_book_ptr.is_null() {
+            return Err(WalletError::Generic("Failed to get address book".to_string()));
+        }
+
+        // For now, return empty list - real implementation would parse C++ vector
+        // TODO: Implement proper parsing of C++ vector data structure
+        Ok(vec![])
+    }
+
+    /// Mark address as used
+    pub fn mark_address_used(&self, address: &str) -> WalletResult<()> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let address_c = CString::new(address)?;
+
+        let success = unsafe {
+            fuego_wallet_mark_address_used(self.wallet_ptr, address_c.as_ptr())
+        };
+
+        if success {
+            Ok(())
+        } else {
+            Err(WalletError::Generic("Failed to mark address as used".to_string()))
+        }
+    }
+
+    /// Get address book entry by address
+    pub fn get_address_book_entry(&self, address: &str) -> WalletResult<Option<AddressBookEntry>> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let address_c = CString::new(address)?;
+        let json_ptr = unsafe { fuego_wallet_get_address_book_entry(self.wallet_ptr, address_c.as_ptr()) };
+
+        if json_ptr.is_null() {
+            return Ok(None); // Entry not found
+        }
+
+        let json_str = unsafe { CStr::from_ptr(json_ptr).to_string_lossy().to_string() };
+
+        unsafe {
+            fuego_wallet_free_address_book_entry(json_ptr);
+        }
+
+        // Parse JSON string to AddressBookEntry
+        // For now, return None - real implementation would parse JSON
+        // TODO: Implement JSON parsing
+        Ok(None)
     }
 }
 

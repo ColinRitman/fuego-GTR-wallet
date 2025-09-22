@@ -34,6 +34,7 @@ async function init() {
   await loadWalletInfo();
   await loadTransactions();
   await loadNetworkStatus();
+  await loadSyncProgress();
   
   // Load advanced features
   await loadEnhancedWalletInfo();
@@ -61,7 +62,7 @@ async function loadWalletInfo() {
 // Load transactions
 async function loadTransactions() {
   try {
-    transactions = await invoke("wallet_get_transactions", { limit: 10, offset: 0 });
+    transactions = await invoke("get_transaction_history", { limit: 10, offset: 0 });
     console.log("Transactions loaded:", transactions);
   } catch (error) {
     console.error("Failed to load transactions:", error);
@@ -75,6 +76,17 @@ async function loadNetworkStatus() {
     console.log("Network status loaded:", networkStatus);
   } catch (error) {
     console.error("Failed to load network status:", error);
+  }
+}
+
+// Load sync progress
+async function loadSyncProgress() {
+  try {
+    const syncProgress = await invoke("get_sync_progress");
+    console.log("Sync progress loaded:", syncProgress);
+    updateSyncDisplay(syncProgress);
+  } catch (error) {
+    console.error("Failed to load sync progress:", error);
   }
 }
 
@@ -300,6 +312,7 @@ async function refresh() {
   await loadWalletInfo();
   await loadTransactions();
   await loadNetworkStatus();
+  await loadSyncProgress();
   updateUI();
   await loadDeposits();
 }
@@ -384,18 +397,29 @@ async function sendTransaction() {
 }
 
 // Update sync progress display
-function updateSyncDisplay(networkStatus: any) {
+function updateSyncDisplay(syncProgress: any) {
   const syncProgressEl = document.querySelector("#sync-progress");
   const syncDetailsEl = document.querySelector("#sync-details");
-  
+  const syncFillEl = document.querySelector(".sync-fill");
+
   if (syncProgressEl && syncDetailsEl) {
-    if (networkStatus.is_syncing) {
-      const progress = ((networkStatus.sync_height / networkStatus.network_height) * 100).toFixed(1);
+    if (syncProgress.is_syncing) {
+      const progress = syncProgress.progress_percentage.toFixed(1);
       syncProgressEl.textContent = `Syncing... ${progress}%`;
-      syncDetailsEl.textContent = `Block ${networkStatus.sync_height.toLocaleString()} of ${networkStatus.network_height.toLocaleString()}`;
+      syncDetailsEl.textContent = `Block ${syncProgress.current_height.toLocaleString()} of ${syncProgress.total_height.toLocaleString()}`;
+
+      // Update progress bar
+      if (syncFillEl) {
+        (syncFillEl as HTMLElement).style.width = `${syncProgress.progress_percentage}%`;
+      }
     } else {
       syncProgressEl.textContent = "✅ Fully Synced";
-      syncDetailsEl.textContent = `Connected to ${networkStatus.connection_type}`;
+      syncDetailsEl.textContent = `Connected to network`;
+
+      // Fill progress bar
+      if (syncFillEl) {
+        (syncFillEl as HTMLElement).style.width = "100%";
+      }
     }
   }
 }

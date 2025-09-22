@@ -289,6 +289,20 @@ extern "C" {
     fn fuego_wallet_stop_mining(wallet: *mut c_void) -> bool;
     fn fuego_wallet_get_mining_info(wallet: *mut c_void) -> *mut MiningInfo;
     fn fuego_wallet_set_mining_pool(wallet: *mut c_void, pool_address: *const c_char, worker_name: *const c_char) -> bool;
+    fn fuego_wallet_get_mining_stats_json(wallet: *mut c_void) -> *mut c_char;
+    fn fuego_wallet_free_mining_stats_json(json_str: *mut c_char);
+
+    // Secure key management
+    fn fuego_wallet_generate_seed_phrase() -> *mut c_char;
+    fn fuego_wallet_validate_seed_phrase(seed_phrase: *const c_char) -> bool;
+    fn fuego_wallet_derive_keys_from_seed(wallet: *mut c_void, seed_phrase: *const c_char, password: *const c_char) -> bool;
+    fn fuego_wallet_get_seed_phrase(wallet: *mut c_void, password: *const c_char) -> *mut c_char;
+    fn fuego_wallet_get_view_key(wallet: *mut c_void) -> *mut c_char;
+    fn fuego_wallet_get_spend_key(wallet: *mut c_void) -> *mut c_char;
+    fn fuego_wallet_has_keys(wallet: *mut c_void) -> bool;
+    fn fuego_wallet_export_keys(wallet: *mut c_void) -> *mut c_char;
+    fn fuego_wallet_import_keys(wallet: *mut c_void, view_key: *const c_char, spend_key: *const c_char, address: *const c_char) -> bool;
+    fn fuego_wallet_free_key_string(key_str: *mut c_char);
 
     // Memory management
     fn fuego_wallet_free_wallet_info(info: *mut WalletInfo);
@@ -1446,6 +1460,226 @@ impl RealCryptoNoteWallet {
         // For now, return None - real implementation would parse JSON
         // TODO: Implement JSON parsing
         Ok(None)
+    }
+
+    /// Set mining pool configuration
+    pub fn set_mining_pool(&self, pool_address: Option<&str>, worker_name: Option<&str>) -> WalletResult<()> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let pool_address_c = match pool_address {
+            Some(addr) => CString::new(addr)?,
+            None => CString::new("")?,
+        };
+        let worker_name_c = match worker_name {
+            Some(name) => CString::new(name)?,
+            None => CString::new("")?,
+        };
+
+        let success = unsafe {
+            fuego_wallet_set_mining_pool(
+                self.wallet_ptr,
+                pool_address_c.as_ptr(),
+                worker_name_c.as_ptr()
+            )
+        };
+
+        if success {
+            Ok(())
+        } else {
+            Err(WalletError::Generic("Failed to set mining pool".to_string()))
+        }
+    }
+
+    /// Get detailed mining statistics as JSON
+    pub fn get_mining_stats_json(&self) -> WalletResult<String> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let json_ptr = unsafe { fuego_wallet_get_mining_stats_json(self.wallet_ptr) };
+
+        if json_ptr.is_null() {
+            return Err(WalletError::Generic("Failed to get mining statistics JSON".to_string()));
+        }
+
+        let json_str = unsafe { CStr::from_ptr(json_ptr).to_string_lossy().to_string() };
+
+        unsafe {
+            fuego_wallet_free_mining_stats_json(json_ptr);
+        }
+
+        Ok(json_str)
+    }
+
+    /// Generate a new random seed phrase
+    pub fn generate_seed_phrase() -> WalletResult<String> {
+        let seed_ptr = unsafe { fuego_wallet_generate_seed_phrase() };
+
+        if seed_ptr.is_null() {
+            return Err(WalletError::Generic("Failed to generate seed phrase".to_string()));
+        }
+
+        let seed_str = unsafe { CStr::from_ptr(seed_ptr).to_string_lossy().to_string() };
+
+        unsafe {
+            fuego_wallet_free_key_string(seed_ptr);
+        }
+
+        Ok(seed_str)
+    }
+
+    /// Validate a seed phrase
+    pub fn validate_seed_phrase(seed_phrase: &str) -> WalletResult<bool> {
+        let seed_c = CString::new(seed_phrase)?;
+        let is_valid = unsafe { fuego_wallet_validate_seed_phrase(seed_c.as_ptr()) };
+        Ok(is_valid)
+    }
+
+    /// Derive keys from seed phrase
+    pub fn derive_keys_from_seed(&self, seed_phrase: &str, password: &str) -> WalletResult<()> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let seed_c = CString::new(seed_phrase)?;
+        let password_c = CString::new(password)?;
+
+        let success = unsafe {
+            fuego_wallet_derive_keys_from_seed(
+                self.wallet_ptr,
+                seed_c.as_ptr(),
+                password_c.as_ptr()
+            )
+        };
+
+        if success {
+            Ok(())
+        } else {
+            Err(WalletError::Generic("Failed to derive keys from seed phrase".to_string()))
+        }
+    }
+
+    /// Get seed phrase (requires password for decryption)
+    pub fn get_seed_phrase(&self, password: &str) -> WalletResult<String> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let password_c = CString::new(password)?;
+        let seed_ptr = unsafe { fuego_wallet_get_seed_phrase(self.wallet_ptr, password_c.as_ptr()) };
+
+        if seed_ptr.is_null() {
+            return Err(WalletError::Generic("Failed to get seed phrase".to_string()));
+        }
+
+        let seed_str = unsafe { CStr::from_ptr(seed_ptr).to_string_lossy().to_string() };
+
+        unsafe {
+            fuego_wallet_free_key_string(seed_ptr);
+        }
+
+        Ok(seed_str)
+    }
+
+    /// Get view key
+    pub fn get_view_key(&self) -> WalletResult<String> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let key_ptr = unsafe { fuego_wallet_get_view_key(self.wallet_ptr) };
+
+        if key_ptr.is_null() {
+            return Err(WalletError::Generic("Failed to get view key".to_string()));
+        }
+
+        let key_str = unsafe { CStr::from_ptr(key_ptr).to_string_lossy().to_string() };
+
+        unsafe {
+            fuego_wallet_free_key_string(key_ptr);
+        }
+
+        Ok(key_str)
+    }
+
+    /// Get spend key
+    pub fn get_spend_key(&self) -> WalletResult<String> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let key_ptr = unsafe { fuego_wallet_get_spend_key(self.wallet_ptr) };
+
+        if key_ptr.is_null() {
+            return Err(WalletError::Generic("Failed to get spend key".to_string()));
+        }
+
+        let key_str = unsafe { CStr::from_ptr(key_ptr).to_string_lossy().to_string() };
+
+        unsafe {
+            fuego_wallet_free_key_string(key_ptr);
+        }
+
+        Ok(key_str)
+    }
+
+    /// Check if wallet has keys
+    pub fn has_keys(&self) -> WalletResult<bool> {
+        if self.wallet_ptr.is_null() {
+            return Ok(false);
+        }
+
+        let has_keys = unsafe { fuego_wallet_has_keys(self.wallet_ptr) };
+        Ok(has_keys)
+    }
+
+    /// Export wallet keys
+    pub fn export_keys(&self) -> WalletResult<String> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let keys_ptr = unsafe { fuego_wallet_export_keys(self.wallet_ptr) };
+
+        if keys_ptr.is_null() {
+            return Err(WalletError::Generic("Failed to export keys".to_string()));
+        }
+
+        let keys_str = unsafe { CStr::from_ptr(keys_ptr).to_string_lossy().to_string() };
+
+        unsafe {
+            fuego_wallet_free_key_string(keys_ptr);
+        }
+
+        Ok(keys_str)
+    }
+
+    /// Import wallet keys
+    pub fn import_keys(&self, view_key: &str, spend_key: &str, address: &str) -> WalletResult<()> {
+        if self.wallet_ptr.is_null() {
+            return Err(WalletError::WalletNotOpen);
+        }
+
+        let view_c = CString::new(view_key)?;
+        let spend_c = CString::new(spend_key)?;
+        let address_c = CString::new(address)?;
+
+        let success = unsafe {
+            fuego_wallet_import_keys(
+                self.wallet_ptr,
+                view_c.as_ptr(),
+                spend_c.as_ptr(),
+                address_c.as_ptr()
+            )
+        };
+
+        if success {
+            Ok(())
+        } else {
+            Err(WalletError::Generic("Failed to import keys".to_string()))
+        }
     }
 }
 

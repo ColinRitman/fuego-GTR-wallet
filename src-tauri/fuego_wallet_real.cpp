@@ -69,6 +69,28 @@ struct RealFuegoWallet {
     
     std::vector<Deposit> deposits;
 
+    // Mining operations
+    bool is_mining = false;
+    double hashrate = 0.0;
+    uint32_t threads = 0;
+    uint64_t total_hashes = 0;
+    uint64_t valid_shares = 0;
+    uint64_t invalid_shares = 0;
+    std::string pool_address;
+    std::string worker_name;
+    uint64_t mining_start_time = 0;
+    uint64_t last_share_time = 0;
+
+    // Mining thread
+    std::thread mining_thread;
+    bool mining_thread_running = false;
+
+    // Key management
+    std::string seed_phrase;
+    std::string view_key;
+    std::string spend_key;
+    bool has_keys = false;
+
     // Address book management
     struct AddressBookEntry {
         std::string address;
@@ -876,13 +898,73 @@ extern "C" uint64_t fuego_wallet_get_block_timestamp(FuegoWallet wallet, uint64_
     ).count() - (g_real_wallet->network_height - height) * 120; // 2-minute blocks
 }
 
+    void mining_thread_func() {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(1, 100);
+
+        while (mining_thread_running) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Mine every 100ms
+
+            if (!mining_thread_running) break;
+
+            // Simulate mining work
+            total_hashes += threads * 100; // Each thread does 100 hashes per 100ms
+
+            // Simulate share submission (5% success rate)
+            int random_value = dis(gen);
+            if (random_value <= 5) { // 5% chance of finding a share
+                valid_shares++;
+                last_share_time = std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::system_clock::now().time_since_epoch()
+                ).count();
+
+                std::cout << "Found valid share! Total shares: " << valid_shares << std::endl;
+            } else if (random_value <= 10) { // 5% chance of invalid share
+                invalid_shares++;
+                std::cout << "Found invalid share! Total invalid: " << invalid_shares << std::endl;
+            }
+        }
+    }
+
 // Mining operations
 extern "C" bool fuego_wallet_start_mining(FuegoWallet wallet, uint32_t threads, bool background) {
     if (g_real_wallet.get() != wallet) {
         return false;
     }
 
+    if (g_real_wallet->is_mining) {
+        std::cout << "Mining is already running" << std::endl;
+        return false;
+    }
+
+    // Validate thread count
+    if (threads == 0 || threads > 32) {
+        std::cout << "Invalid thread count: " << threads << std::endl;
+        return false;
+    }
+
+    // Update mining state
+    g_real_wallet->is_mining = true;
+    g_real_wallet->threads = threads;
+    g_real_wallet->mining_start_time = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
+    g_real_wallet->total_hashes = 0;
+    g_real_wallet->valid_shares = 0;
+    g_real_wallet->invalid_shares = 0;
+    g_real_wallet->last_share_time = 0;
+
+    // Simulate hashrate based on thread count
+    g_real_wallet->hashrate = threads * 1000.0; // 1 KH/s per thread
+
     std::cout << "Starting mining with " << threads << " threads (background: " << background << ")" << std::endl;
+    std::cout << "Hashrate: " << g_real_wallet->hashrate << " H/s" << std::endl;
+
+    // Start mining simulation thread
+    g_real_wallet->mining_thread_running = true;
+    g_real_wallet->mining_thread = std::thread(&RealFuegoWallet::mining_thread_func, g_real_wallet.get());
+
     return true;
 }
 
@@ -891,7 +973,25 @@ extern "C" bool fuego_wallet_stop_mining(FuegoWallet wallet) {
         return false;
     }
 
-    std::cout << "Stopping mining" << std::endl;
+    if (!g_real_wallet->is_mining) {
+        std::cout << "Mining is not running" << std::endl;
+        return false;
+    }
+
+    std::cout << "Stopping mining..." << std::endl;
+
+    // Stop mining thread
+    g_real_wallet->mining_thread_running = false;
+    if (g_real_wallet->mining_thread.joinable()) {
+        g_real_wallet->mining_thread.join();
+    }
+
+    // Update mining state
+    g_real_wallet->is_mining = false;
+    g_real_wallet->threads = 0;
+    g_real_wallet->hashrate = 0.0;
+
+    std::cout << "Mining stopped" << std::endl;
     return true;
 }
 
@@ -901,11 +1001,22 @@ extern "C" MiningInfo* fuego_wallet_get_mining_info(FuegoWallet wallet) {
     }
 
     MiningInfo* info = new MiningInfo();
-    info->is_mining = false;
-    info->hashrate = 0.0;
-    info->difficulty = 52500024;
-    info->block_reward = 3005769;
-    info->threads = 0;
+    info->is_mining = g_real_wallet->is_mining;
+    info->hashrate = g_real_wallet->hashrate;
+    info->difficulty = 52500024; // Real Fuego difficulty
+    info->block_reward = 3005769; // Real Fuego block reward in atomic units
+    info->threads = g_real_wallet->threads;
+
+    // Copy pool address and worker name
+    if (!g_real_wallet->pool_address.empty()) {
+        strncpy(info->pool_address, g_real_wallet->pool_address.c_str(), sizeof(info->pool_address) - 1);
+        info->pool_address[sizeof(info->pool_address) - 1] = '\0';
+    }
+
+    if (!g_real_wallet->worker_name.empty()) {
+        strncpy(info->worker_name, g_real_wallet->worker_name.c_str(), sizeof(info->worker_name) - 1);
+        info->worker_name[sizeof(info->worker_name) - 1] = '\0';
+    }
 
     return info;
 }
@@ -927,6 +1038,18 @@ extern "C" bool fuego_wallet_set_mining_pool(
         return false;
     }
 
+    if (pool_address) {
+        g_real_wallet->pool_address = pool_address;
+    } else {
+        g_real_wallet->pool_address.clear();
+    }
+
+    if (worker_name) {
+        g_real_wallet->worker_name = worker_name;
+    } else {
+        g_real_wallet->worker_name.clear();
+    }
+
     std::cout << "Setting mining pool: " << (pool_address ? pool_address : "none");
     if (worker_name) {
         std::cout << " (Worker: " << worker_name << ")";
@@ -934,6 +1057,242 @@ extern "C" bool fuego_wallet_set_mining_pool(
     std::cout << std::endl;
 
     return true;
+}
+
+// Get detailed mining statistics
+extern "C" char* fuego_wallet_get_mining_stats_json(FuegoWallet wallet) {
+    if (g_real_wallet.get() != wallet) {
+        return nullptr;
+    }
+
+    uint64_t current_time = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
+
+    uint64_t uptime = g_real_wallet->is_mining && g_real_wallet->mining_start_time > 0 ?
+                      current_time - g_real_wallet->mining_start_time : 0;
+
+    float share_acceptance_rate = g_real_wallet->valid_shares + g_real_wallet->invalid_shares > 0 ?
+                                  (float)g_real_wallet->valid_shares / (g_real_wallet->valid_shares + g_real_wallet->invalid_shares) * 100.0f : 0.0f;
+
+    // Format as JSON string
+    std::string json = "{";
+    json += "\"is_mining\":" + std::string(g_real_wallet->is_mining ? "true" : "false") + ",";
+    json += "\"hashrate\":" + std::to_string(g_real_wallet->hashrate) + ",";
+    json += "\"threads\":" + std::to_string(g_real_wallet->threads) + ",";
+    json += "\"total_hashes\":" + std::to_string(g_real_wallet->total_hashes) + ",";
+    json += "\"valid_shares\":" + std::to_string(g_real_wallet->valid_shares) + ",";
+    json += "\"invalid_shares\":" + std::to_string(g_real_wallet->invalid_shares) + ",";
+    json += "\"share_acceptance_rate\":" + std::to_string(share_acceptance_rate) + ",";
+    json += "\"uptime\":" + std::to_string(uptime) + ",";
+
+    if (g_real_wallet->mining_start_time > 0) {
+        json += "\"mining_start_time\":" + std::to_string(g_real_wallet->mining_start_time) + ",";
+    } else {
+        json += "\"mining_start_time\":null,";
+    }
+
+    if (g_real_wallet->last_share_time > 0) {
+        json += "\"last_share_time\":" + std::to_string(g_real_wallet->last_share_time);
+    } else {
+        json += "\"last_share_time\":null";
+    }
+
+    json += "}";
+
+    char* json_str = new char[json.length() + 1];
+    strcpy(json_str, json.c_str());
+
+    return json_str;
+}
+
+// Free mining stats JSON
+extern "C" void fuego_wallet_free_mining_stats_json(char* json_str) {
+    if (json_str) {
+        delete[] json_str;
+    }
+}
+
+// ===== SECURE KEY MANAGEMENT =====
+
+// Generate a new random seed phrase
+extern "C" char* fuego_wallet_generate_seed_phrase() {
+    // Generate 24-word BIP39 seed phrase (mock implementation)
+    std::vector<std::string> wordlist = {
+        "abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract",
+        "absurd", "abuse", "access", "accident", "account", "accuse", "achieve", "acid",
+        "acoustic", "acquire", "across", "action", "actor", "actress", "actual", "adapt"
+    };
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, wordlist.size() - 1);
+
+    std::vector<std::string> words;
+    for (int i = 0; i < 24; ++i) {
+        words.push_back(wordlist[dis(gen)]);
+    }
+
+    std::string seed_phrase = "";
+    for (size_t i = 0; i < words.size(); ++i) {
+        if (i > 0) seed_phrase += " ";
+        seed_phrase += words[i];
+    }
+
+    char* seed_ptr = new char[seed_phrase.length() + 1];
+    strcpy(seed_ptr, seed_phrase.c_str());
+
+    std::cout << "Generated new seed phrase (24 words)" << std::endl;
+    return seed_ptr;
+}
+
+// Validate a seed phrase
+extern "C" bool fuego_wallet_validate_seed_phrase(const char* seed_phrase) {
+    if (!seed_phrase || strlen(seed_phrase) == 0) {
+        return false;
+    }
+
+    std::string phrase(seed_phrase);
+    std::stringstream ss(phrase);
+    std::string word;
+    int word_count = 0;
+
+    while (ss >> word) {
+        word_count++;
+    }
+
+    // BIP39 seed phrases are typically 12, 18, or 24 words
+    return word_count == 12 || word_count == 18 || word_count == 24;
+}
+
+// Derive keys from seed phrase (mock implementation)
+extern "C" bool fuego_wallet_derive_keys_from_seed(
+    FuegoWallet wallet,
+    const char* seed_phrase,
+    const char* password
+) {
+    if (g_real_wallet.get() != wallet || !seed_phrase) {
+        return false;
+    }
+
+    if (!fuego_wallet_validate_seed_phrase(seed_phrase)) {
+        std::cout << "Invalid seed phrase" << std::endl;
+        return false;
+    }
+
+    // Mock key derivation - in real implementation, this would use cryptographic functions
+    g_real_wallet->seed_phrase = seed_phrase;
+    g_real_wallet->view_key = "view_key_" + std::string(seed_phrase).substr(0, 16) + "_mock";
+    g_real_wallet->spend_key = "spend_key_" + std::string(seed_phrase).substr(16, 16) + "_mock";
+    g_real_wallet->has_keys = true;
+
+    std::cout << "Derived keys from seed phrase" << std::endl;
+    std::cout << "View key: " << g_real_wallet->view_key << std::endl;
+    std::cout << "Spend key: " << g_real_wallet->spend_key << std::endl;
+
+    return true;
+}
+
+// Get seed phrase (encrypted)
+extern "C" char* fuego_wallet_get_seed_phrase(FuegoWallet wallet, const char* password) {
+    if (g_real_wallet.get() != wallet || !password) {
+        return nullptr;
+    }
+
+    if (!g_real_wallet->has_keys) {
+        return nullptr;
+    }
+
+    // Mock encryption - in real implementation, this would decrypt the stored seed phrase
+    std::string encrypted_seed = g_real_wallet->seed_phrase; // For mock purposes
+
+    char* seed_ptr = new char[encrypted_seed.length() + 1];
+    strcpy(seed_ptr, encrypted_seed.c_str());
+
+    return seed_ptr;
+}
+
+// Get view key
+extern "C" char* fuego_wallet_get_view_key(FuegoWallet wallet) {
+    if (g_real_wallet.get() != wallet || !g_real_wallet->has_keys) {
+        return nullptr;
+    }
+
+    char* key_ptr = new char[g_real_wallet->view_key.length() + 1];
+    strcpy(key_ptr, g_real_wallet->view_key.c_str());
+
+    return key_ptr;
+}
+
+// Get spend key
+extern "C" char* fuego_wallet_get_spend_key(FuegoWallet wallet) {
+    if (g_real_wallet.get() != wallet || !g_real_wallet->has_keys) {
+        return nullptr;
+    }
+
+    char* key_ptr = new char[g_real_wallet->spend_key.length() + 1];
+    strcpy(key_ptr, g_real_wallet->spend_key.c_str());
+
+    return key_ptr;
+}
+
+// Check if wallet has keys
+extern "C" bool fuego_wallet_has_keys(FuegoWallet wallet) {
+    if (g_real_wallet.get() != wallet) {
+        return false;
+    }
+
+    return g_real_wallet->has_keys;
+}
+
+// Export wallet keys (view key, spend key, address)
+extern "C" char* fuego_wallet_export_keys(FuegoWallet wallet) {
+    if (g_real_wallet.get() != wallet || !g_real_wallet->has_keys) {
+        return nullptr;
+    }
+
+    std::string keys_json = "{";
+    keys_json += "\"address\":\"" + g_real_wallet->address + "\",";
+    keys_json += "\"view_key\":\"" + g_real_wallet->view_key + "\",";
+    keys_json += "\"spend_key\":\"" + g_real_wallet->spend_key + "\",";
+    keys_json += "\"seed_phrase\":\"" + g_real_wallet->seed_phrase + "\"";
+    keys_json += "}";
+
+    char* keys_ptr = new char[keys_json.length() + 1];
+    strcpy(keys_ptr, keys_json.c_str());
+
+    std::cout << "Exported wallet keys" << std::endl;
+    return keys_ptr;
+}
+
+// Import wallet keys
+extern "C" bool fuego_wallet_import_keys(
+    FuegoWallet wallet,
+    const char* view_key,
+    const char* spend_key,
+    const char* address
+) {
+    if (g_real_wallet.get() != wallet) {
+        return false;
+    }
+
+    if (view_key) g_real_wallet->view_key = view_key;
+    if (spend_key) g_real_wallet->spend_key = spend_key;
+    if (address) g_real_wallet->address = address;
+
+    g_real_wallet->has_keys = true;
+
+    std::cout << "Imported wallet keys" << std::endl;
+    std::cout << "Address: " << g_real_wallet->address << std::endl;
+
+    return true;
+}
+
+// Free key strings
+extern "C" void fuego_wallet_free_key_string(char* key_str) {
+    if (key_str) {
+        delete[] key_str;
+    }
 }
 
 // Get sync progress

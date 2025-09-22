@@ -224,6 +224,22 @@ MiningInfo* fuego_wallet_get_mining_info(FuegoWallet wallet);
 void fuego_wallet_free_mining_info(MiningInfo* info);
 bool fuego_wallet_set_mining_pool(FuegoWallet wallet, const char* pool_address, const char* worker_name);
 
+// Mining statistics functions
+char* fuego_wallet_get_mining_stats_json(FuegoWallet wallet);
+void fuego_wallet_free_mining_stats_json(char* json_str);
+
+// Secure key management functions
+char* fuego_wallet_generate_seed_phrase();
+bool fuego_wallet_validate_seed_phrase(const char* seed_phrase);
+bool fuego_wallet_derive_keys_from_seed(FuegoWallet wallet, const char* seed_phrase, const char* password);
+char* fuego_wallet_get_seed_phrase(FuegoWallet wallet, const char* password);
+char* fuego_wallet_get_view_key(FuegoWallet wallet);
+char* fuego_wallet_get_spend_key(FuegoWallet wallet);
+bool fuego_wallet_has_keys(FuegoWallet wallet);
+char* fuego_wallet_export_keys(FuegoWallet wallet);
+bool fuego_wallet_import_keys(FuegoWallet wallet, const char* view_key, const char* spend_key, const char* address);
+void fuego_wallet_free_key_string(char* key_str);
+
 // Sync progress functions
 SyncProgress* fuego_wallet_get_sync_progress(FuegoWallet wallet);
 void fuego_wallet_free_sync_progress(SyncProgress* progress);

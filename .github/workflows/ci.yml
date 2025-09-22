@@ -54,7 +54,11 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev \
             libssl-dev \
-            patchelf
+            patchelf \
+            build-essential \
+            curl \
+            wget \
+            file
 
       - name: Install system dependencies (macOS)
         if: matrix.os == 'macos-latest'
@@ -95,15 +99,13 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install frontend dependencies
-        working-directory: fuego-tauri
         run: npm ci
 
       - name: Run npm audit
-        working-directory: fuego-tauri
         run: npm audit --audit-level=moderate
 
       - name: Run Rust audit
-        working-directory: fuego-tauri/src-tauri
+        working-directory: src-tauri
         run: |
           cargo install cargo-audit
           cargo audit
@@ -121,7 +123,7 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
-          scan-ref: 'fuego-tauri'
+          scan-ref: '.'
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true

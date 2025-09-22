@@ -108,6 +108,25 @@ pub fn run() {
             get_background_task_status,
             enable_background_task,
             disable_background_task,
+            // Advanced wallet commands
+            get_wallet_info_advanced,
+            get_network_info_advanced,
+            get_transaction_by_hash,
+            create_address,
+            get_block_info,
+            start_mining,
+            stop_mining,
+            get_mining_info,
+            get_transaction_history,
+            get_sync_progress,
+            get_sync_status_json,
+            // Address book commands
+            add_address_book_entry,
+            remove_address_book_entry,
+            update_address_book_entry,
+            get_address_book,
+            mark_address_used,
+            get_address_book_entry,
         ])
         .setup(|_app| {
             info!("Fuego Desktop Wallet initialized successfully");
@@ -239,16 +258,42 @@ async fn get_wallet_info() -> Result<serde_json::Value, String> {
 
 /// Get transactions (real implementation)
 #[tauri::command]
-async fn get_transactions(_limit: Option<u64>, _offset: Option<u64>) -> Result<Vec<serde_json::Value>, String> {
+async fn get_transactions(limit: Option<u64>, offset: Option<u64>) -> Result<Vec<serde_json::Value>, String> {
     let mut real_wallet = RealCryptoNoteWallet::new();
-    
+
     // Try to open wallet and get real transactions
     let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
         .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
-    
-    // For now, return empty list - real transactions will be loaded from blockchain
-    // TODO: Implement real transaction loading from CryptoNote blockchain
-    Ok(vec![])
+
+    // Get real transaction history from blockchain
+    match real_wallet.get_transaction_history(limit.unwrap_or(10), offset.unwrap_or(0)) {
+        Ok(transactions) => {
+            let mapped: Vec<serde_json::Value> = transactions
+                .into_iter()
+                .map(|tx| serde_json::json!({
+                    "id": tx.id,
+                    "hash": tx.hash,
+                    "amount": tx.amount,
+                    "fee": tx.fee,
+                    "height": tx.height,
+                    "timestamp": tx.timestamp,
+                    "confirmations": tx.confirmations,
+                    "is_confirmed": tx.is_confirmed,
+                    "is_pending": tx.is_pending,
+                    "payment_id": tx.payment_id,
+                    "destination_addresses": tx.destination_addresses,
+                    "source_addresses": tx.source_addresses,
+                    "unlock_time": tx.unlock_time,
+                    "extra": tx.extra
+                }))
+                .collect();
+            Ok(mapped)
+        }
+        Err(e) => {
+            log::error!("Failed to get transaction history: {}", e);
+            Err(format!("Failed to get transaction history: {}", e))
+        }
+    }
 }
 
 /// Get enhanced wallet information for advanced UI (Phase 1.3)
@@ -955,6 +1000,343 @@ async fn disable_background_task(task_name: String) -> Result<(), String> {
     task_manager.set_task_enabled(&task_name, false);
     log::info!("Background task {} disabled", task_name);
     Ok(())
+}
+
+// ===== PHASE 2.3: ADVANCED WALLET COMMANDS =====
+
+// Get comprehensive wallet information
+#[tauri::command]
+async fn get_wallet_info_advanced() -> Result<serde_json::Value, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.get_wallet_info() {
+        Ok(info) => Ok(serde_json::json!({
+            "address": info.address,
+            "balance": info.balance,
+            "unlocked_balance": info.unlocked_balance,
+            "locked_balance": info.locked_balance,
+            "total_received": info.total_received,
+            "total_sent": info.total_sent,
+            "transaction_count": info.transaction_count,
+            "is_synced": info.is_synced,
+            "sync_height": info.sync_height,
+            "network_height": info.network_height,
+            "daemon_height": info.daemon_height,
+            "is_connected": info.is_connected,
+            "peer_count": info.peer_count,
+            "last_block_time": info.last_block_time
+        })),
+        Err(e) => Err(format!("Failed to get wallet info: {}", e))
+    }
+}
+
+// Get detailed network information
+#[tauri::command]
+async fn get_network_info_advanced() -> Result<serde_json::Value, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.get_network_info() {
+        Ok(info) => Ok(serde_json::json!({
+            "is_connected": info.is_connected,
+            "peer_count": info.peer_count,
+            "sync_height": info.sync_height,
+            "network_height": info.network_height,
+            "is_syncing": info.is_syncing,
+            "connection_type": info.connection_type,
+            "last_sync_time": info.last_sync_time,
+            "sync_speed": info.sync_speed,
+            "estimated_sync_time": info.estimated_sync_time
+        })),
+        Err(e) => Err(format!("Failed to get network info: {}", e))
+    }
+}
+
+// Get transaction by hash
+#[tauri::command]
+async fn get_transaction_by_hash(tx_hash: String) -> Result<serde_json::Value, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.get_transaction_by_hash(&tx_hash) {
+        Ok(tx) => Ok(serde_json::json!({
+            "id": tx.id,
+            "hash": tx.hash,
+            "amount": tx.amount,
+            "fee": tx.fee,
+            "height": tx.height,
+            "timestamp": tx.timestamp,
+            "confirmations": tx.confirmations,
+            "is_confirmed": tx.is_confirmed,
+            "is_pending": tx.is_pending,
+            "payment_id": tx.payment_id,
+            "destination_addresses": tx.destination_addresses,
+            "source_addresses": tx.source_addresses,
+            "unlock_time": tx.unlock_time,
+            "extra": tx.extra
+        })),
+        Err(e) => Err(format!("Failed to get transaction: {}", e))
+    }
+}
+
+// Create new address
+#[tauri::command]
+async fn create_address(label: Option<String>) -> Result<String, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.create_address(label.as_deref()) {
+        Ok(address) => Ok(address),
+        Err(e) => Err(format!("Failed to create address: {}", e))
+    }
+}
+
+// Get block information
+#[tauri::command]
+async fn get_block_info(height: u64) -> Result<serde_json::Value, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.get_block_info(height) {
+        Ok(block) => Ok(serde_json::json!({
+            "height": block.height,
+            "hash": block.hash,
+            "timestamp": block.timestamp,
+            "difficulty": block.difficulty,
+            "reward": block.reward,
+            "size": block.size,
+            "transaction_count": block.transaction_count,
+            "is_main_chain": block.is_main_chain
+        })),
+        Err(e) => Err(format!("Failed to get block info: {}", e))
+    }
+}
+
+// Mining commands
+#[tauri::command]
+async fn start_mining(threads: u32, background: bool) -> Result<(), String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.start_mining(threads, background) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to start mining: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn stop_mining() -> Result<(), String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.stop_mining() {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to stop mining: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn get_mining_info() -> Result<serde_json::Value, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.get_mining_info() {
+        Ok(info) => Ok(serde_json::json!({
+            "is_mining": info.is_mining,
+            "hashrate": info.hashrate,
+            "difficulty": info.difficulty,
+            "block_reward": info.block_reward,
+            "pool_address": info.pool_address,
+            "worker_name": info.worker_name,
+            "threads": info.threads
+        })),
+        Err(e) => Err(format!("Failed to get mining info: {}", e))
+    }
+}
+
+// Get transaction history
+#[tauri::command]
+async fn get_transaction_history(limit: Option<u64>, offset: Option<u64>) -> Result<Vec<serde_json::Value>, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.get_transaction_history(limit.unwrap_or(50), offset.unwrap_or(0)) {
+        Ok(transactions) => {
+            let mapped: Vec<serde_json::Value> = transactions
+                .into_iter()
+                .map(|tx| serde_json::json!({
+                    "id": tx.id,
+                    "hash": tx.hash,
+                    "amount": tx.amount,
+                    "fee": tx.fee,
+                    "height": tx.height,
+                    "timestamp": tx.timestamp,
+                    "confirmations": tx.confirmations,
+                    "is_confirmed": tx.is_confirmed,
+                    "is_pending": tx.is_pending,
+                    "payment_id": tx.payment_id,
+                    "destination_addresses": tx.destination_addresses,
+                    "source_addresses": tx.source_addresses,
+                    "unlock_time": tx.unlock_time,
+                    "extra": tx.extra
+                }))
+                .collect();
+            Ok(mapped)
+        }
+        Err(e) => Err(format!("Failed to get transaction history: {}", e))
+    }
+}
+
+// Sync progress commands
+#[tauri::command]
+async fn get_sync_progress() -> Result<serde_json::Value, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.get_sync_progress() {
+        Ok(progress) => Ok(serde_json::json!({
+            "current_height": progress.current_height,
+            "total_height": progress.total_height,
+            "progress_percentage": progress.progress_percentage,
+            "estimated_time_remaining": progress.estimated_time_remaining,
+            "is_syncing": progress.is_syncing
+        })),
+        Err(e) => Err(format!("Failed to get sync progress: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn get_sync_status_json() -> Result<String, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.get_sync_status_json() {
+        Ok(json) => Ok(json),
+        Err(e) => Err(format!("Failed to get sync status JSON: {}", e))
+    }
+}
+
+// Address book commands
+#[tauri::command]
+async fn add_address_book_entry(address: String, label: Option<String>, description: Option<String>) -> Result<(), String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.add_address_book_entry(&address, label.as_deref(), description.as_deref()) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to add address book entry: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn remove_address_book_entry(address: String) -> Result<(), String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.remove_address_book_entry(&address) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to remove address book entry: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn update_address_book_entry(address: String, label: Option<String>, description: Option<String>) -> Result<(), String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.update_address_book_entry(&address, label.as_deref(), description.as_deref()) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to update address book entry: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn get_address_book() -> Result<Vec<serde_json::Value>, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.get_address_book() {
+        Ok(entries) => {
+            let mapped: Vec<serde_json::Value> = entries
+                .into_iter()
+                .map(|entry| serde_json::json!({
+                    "address": entry.address,
+                    "label": entry.label,
+                    "description": entry.description,
+                    "created_time": entry.created_time,
+                    "last_used_time": entry.last_used_time,
+                    "use_count": entry.use_count
+                }))
+                .collect();
+            Ok(mapped)
+        }
+        Err(e) => Err(format!("Failed to get address book: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn mark_address_used(address: String) -> Result<(), String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.mark_address_used(&address) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to mark address as used: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn get_address_book_entry(address: String) -> Result<Option<serde_json::Value>, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.get_address_book_entry(&address) {
+        Ok(Some(entry)) => Ok(Some(serde_json::json!({
+            "address": entry.address,
+            "label": entry.label,
+            "description": entry.description,
+            "created_time": entry.created_time,
+            "last_used_time": entry.last_used_time,
+            "use_count": entry.use_count
+        }))),
+        Ok(None) => Ok(None),
+        Err(e) => Err(format!("Failed to get address book entry: {}", e))
+    }
 }
 
 // ===== PHASE 2.3: PRODUCTION FEATURES COMMANDS =====

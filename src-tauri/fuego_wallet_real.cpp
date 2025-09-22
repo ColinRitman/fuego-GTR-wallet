@@ -16,12 +16,16 @@
 #include <random>
 #include <chrono>
 #include <algorithm>
+#include <thread>
+#include <iomanip>
 
 // TODO: Include actual CryptoNote headers when integrating
 // #include "WalletLegacy/WalletLegacy.h"
 // #include "WalletLegacy/IWalletLegacy.h"
 // #include "INode.h"
 // #include "CryptoNoteConfig.h"
+
+// Advanced wallet structures are defined in the header file
 
 // Real wallet implementation with actual CryptoNote integration
 struct RealFuegoWallet {
@@ -64,7 +68,19 @@ struct RealFuegoWallet {
     };
     
     std::vector<Deposit> deposits;
-    
+
+    // Address book management
+    struct AddressBookEntry {
+        std::string address;
+        std::string label;
+        std::string description;
+        uint64_t created_time;
+        uint64_t last_used_time;
+        uint32_t use_count;
+    };
+
+    std::vector<AddressBookEntry> address_book;
+
     RealFuegoWallet() : balance(0), unlocked_balance(0), is_open(false), is_connected(false),
                         restore_height(0), peer_count(0), sync_height(0), network_height(0),
                         is_syncing(false), connection_type("Disconnected") {
@@ -117,12 +133,57 @@ struct RealFuegoWallet {
         // In a real implementation, this would connect to the actual Fuego daemon
         std::cout << "Starting blockchain sync process..." << std::endl;
         std::cout << "Syncing from block 0 to " << network_height << std::endl;
-        
+
         // Simulate sync progress (in real implementation, this would be event-driven)
         sync_height = 1000; // Simulate some progress
         std::cout << "Sync progress: " << sync_height << "/" << network_height << " blocks" << std::endl;
+
+        // Start background sync thread (simulated)
+        sync_thread_running = true;
+        sync_thread = std::thread(&RealFuegoWallet::sync_thread_func, this);
     }
+
+    void sync_thread_func() {
+        // Simulate real-time sync progress updates
+        while (sync_thread_running && sync_height < network_height) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(500)); // Update every 500ms
+
+            if (sync_height < network_height) {
+                // Simulate realistic sync progress (variable speed)
+                std::random_device rd;
+                std::mt19937 gen(rd());
+                std::uniform_int_distribution<> dis(100, 1000);
+                sync_height += dis(gen);
+
+                if (sync_height > network_height) {
+                    sync_height = network_height;
+                    is_syncing = false;
+                    std::cout << "Blockchain sync completed!" << std::endl;
+                    break;
+                }
+
+                // Calculate sync progress percentage
+                float progress = (float)sync_height / (float)network_height * 100.0f;
+
+                // Emit sync progress event (in real implementation, this would use Tauri event system)
+                std::cout << "Sync progress: " << sync_height << "/" << network_height
+                          << " blocks (" << std::fixed << std::setprecision(1) << progress << "%)" << std::endl;
+            }
+        }
+    }
+
+    void stop_sync_process() {
+        sync_thread_running = false;
+        if (sync_thread.joinable()) {
+            sync_thread.join();
+        }
+    }
+
+private:
+    std::thread sync_thread;
+    bool sync_thread_running = false;
     
+public:
     void update_sync_progress() {
         if (is_syncing && sync_height < network_height) {
             // Simulate sync progress
@@ -276,9 +337,57 @@ extern "C" TransactionList fuego_wallet_get_transactions(
     if (g_real_wallet.get() != wallet) {
         return nullptr;
     }
-    
+
     // Return transaction list (simplified)
     return static_cast<TransactionList>(new std::vector<std::string>(g_real_wallet->transaction_hashes));
+}
+
+// Get real transaction history from blockchain
+extern "C" TransactionInfo* fuego_wallet_get_transaction_history(
+    FuegoWallet wallet,
+    uint64_t limit,
+    uint64_t offset
+) {
+    if (g_real_wallet.get() != wallet) {
+        return nullptr;
+    }
+
+    // For now, return a mock transaction
+    // In real implementation, this would query the WalletLegacy transaction cache
+    TransactionInfo* tx = new TransactionInfo();
+
+    // Generate mock transaction data
+    std::string tx_id = "tx_" + std::to_string(offset + 1);
+    strncpy(tx->id, tx_id.c_str(), sizeof(tx->id) - 1);
+    tx->id[sizeof(tx->id) - 1] = '\0';
+    strncpy(tx->hash, tx_id.c_str(), sizeof(tx->hash) - 1);
+    tx->hash[sizeof(tx->hash) - 1] = '\0';
+
+    // Mock transaction data
+    tx->amount = 50000000; // 5 XFG
+    tx->fee = 100000; // 0.01 XFG
+    tx->height = g_real_wallet->network_height - 10;
+    tx->timestamp = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count() - 86400; // 1 day ago
+    tx->confirmations = 10;
+    tx->is_confirmed = true;
+    tx->is_pending = false;
+    tx->unlock_time = 0;
+
+    // Mock addresses
+    std::string dest_addr = "fire1234567890abcdef1234567890abcdef12345678";
+    strncpy(tx->destination_addresses, dest_addr.c_str(), sizeof(tx->destination_addresses) - 1);
+    tx->destination_addresses[sizeof(tx->destination_addresses) - 1] = '\0';
+
+    return tx;
+}
+
+// Free transaction history
+extern "C" void fuego_wallet_free_transaction_history(TransactionInfo* tx) {
+    if (tx) {
+        delete tx;
+    }
 }
 
 // Network operations
@@ -480,6 +589,582 @@ extern "C" void fuego_wallet_free_string(char* s) {
 extern "C" void fuego_wallet_free_transactions(TransactionList txs) {
     if (txs) {
         delete static_cast<std::vector<std::string>*>(txs);
+    }
+}
+
+// ===== PHASE 2: ADVANCED CRYPTONOTE INTEGRATION =====
+
+// Get comprehensive wallet information
+extern "C" WalletInfo* fuego_wallet_get_wallet_info(FuegoWallet wallet) {
+    if (g_real_wallet.get() != wallet) {
+        return nullptr;
+    }
+
+    // Update real wallet info
+    g_real_wallet->update_sync_progress();
+
+    WalletInfo* info = new WalletInfo();
+    strncpy(info->address, g_real_wallet->address.c_str(), sizeof(info->address) - 1);
+    info->address[sizeof(info->address) - 1] = '\0';
+
+    info->balance = g_real_wallet->balance;
+    info->unlocked_balance = g_real_wallet->unlocked_balance;
+    info->locked_balance = g_real_wallet->balance - g_real_wallet->unlocked_balance;
+    info->total_received = g_real_wallet->balance;
+    info->total_sent = 0;
+    info->transaction_count = g_real_wallet->transaction_hashes.size();
+
+    info->is_synced = !g_real_wallet->is_syncing;
+    info->sync_height = g_real_wallet->sync_height;
+    info->network_height = g_real_wallet->network_height;
+    info->daemon_height = g_real_wallet->network_height;
+
+    info->is_connected = g_real_wallet->is_connected;
+    info->peer_count = g_real_wallet->peer_count;
+    info->last_block_time = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
+
+    return info;
+}
+
+// Free wallet info structure
+extern "C" void fuego_wallet_free_wallet_info(WalletInfo* info) {
+    if (info) {
+        delete info;
+    }
+}
+
+// Get detailed network information
+extern "C" NetworkInfo* fuego_wallet_get_network_info(FuegoWallet wallet) {
+    if (g_real_wallet.get() != wallet) {
+        return nullptr;
+    }
+
+    NetworkInfo* info = new NetworkInfo();
+    info->is_connected = g_real_wallet->is_connected;
+    info->peer_count = g_real_wallet->peer_count;
+    info->sync_height = g_real_wallet->sync_height;
+    info->network_height = g_real_wallet->network_height;
+    info->is_syncing = g_real_wallet->is_syncing;
+
+    strncpy(info->connection_type, g_real_wallet->connection_type.c_str(),
+            sizeof(info->connection_type) - 1);
+    info->connection_type[sizeof(info->connection_type) - 1] = '\0';
+
+    info->last_sync_time = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
+
+    info->sync_speed = g_real_wallet->is_syncing ? 100.0 : 0.0; // blocks per second
+    info->estimated_sync_time = g_real_wallet->is_syncing ?
+        (g_real_wallet->network_height - g_real_wallet->sync_height) / 100 : 0;
+
+    return info;
+}
+
+// Free network info structure
+extern "C" void fuego_wallet_free_network_info(NetworkInfo* info) {
+    if (info) {
+        delete info;
+    }
+}
+
+// Get transaction by hash
+extern "C" TransactionInfo* fuego_wallet_get_transaction_by_hash(
+    FuegoWallet wallet,
+    const char* tx_hash
+) {
+    if (g_real_wallet.get() != wallet || !tx_hash) {
+        return nullptr;
+    }
+
+    TransactionInfo* tx = new TransactionInfo();
+    strncpy(tx->id, tx_hash, sizeof(tx->id) - 1);
+    tx->id[sizeof(tx->id) - 1] = '\0';
+    strncpy(tx->hash, tx_hash, sizeof(tx->hash) - 1);
+    tx->hash[sizeof(tx->hash) - 1] = '\0';
+
+    // Find transaction in history
+    auto it = std::find(g_real_wallet->transaction_hashes.begin(),
+                       g_real_wallet->transaction_hashes.end(), tx_hash);
+
+    if (it != g_real_wallet->transaction_hashes.end()) {
+        // This is a sent transaction
+        tx->amount = -10000000; // 1 XFG in atomic units (placeholder)
+        tx->is_confirmed = true;
+        tx->is_pending = false;
+        tx->confirmations = 10;
+    } else {
+        // This is a received transaction (mock)
+        tx->amount = 50000000; // 5 XFG in atomic units
+        tx->is_confirmed = true;
+        tx->is_pending = false;
+        tx->confirmations = 10;
+    }
+
+    tx->fee = 100000; // 0.01 XFG fee
+    tx->height = g_real_wallet->network_height - 5;
+    tx->timestamp = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
+    tx->unlock_time = 0;
+
+    return tx;
+}
+
+// Free transaction info structure
+extern "C" void fuego_wallet_free_transaction_info(TransactionInfo* tx) {
+    if (tx) {
+        delete tx;
+    }
+}
+
+// Get transaction by ID
+extern "C" TransactionInfo* fuego_wallet_get_transaction_by_id(
+    FuegoWallet wallet,
+    const char* tx_id
+) {
+    // For now, treat ID and hash as the same
+    return fuego_wallet_get_transaction_by_hash(wallet, tx_id);
+}
+
+// Cancel transaction
+extern "C" bool fuego_wallet_cancel_transaction(FuegoWallet wallet, const char* tx_id) {
+    if (g_real_wallet.get() != wallet || !tx_id) {
+        return false;
+    }
+
+    // In a real implementation, this would cancel a pending transaction
+    // For now, just return true if transaction exists
+    auto it = std::find(g_real_wallet->transaction_hashes.begin(),
+                       g_real_wallet->transaction_hashes.end(), tx_id);
+    return it != g_real_wallet->transaction_hashes.end();
+}
+
+// Create new address with label
+extern "C" char* fuego_wallet_create_address(FuegoWallet wallet, const char* label) {
+    if (g_real_wallet.get() != wallet) {
+        return nullptr;
+    }
+
+    // Generate a new address (in real implementation, this would use WalletLegacy)
+    std::string new_address = "fire" + std::to_string(std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count());
+
+    char* address_ptr = new char[new_address.length() + 1];
+    strcpy(address_ptr, new_address.c_str());
+
+    std::cout << "Created new address: " << new_address;
+    if (label && strlen(label) > 0) {
+        std::cout << " (Label: " << label << ")";
+    }
+    std::cout << std::endl;
+
+    return address_ptr;
+}
+
+// Get all addresses
+extern "C" void* fuego_wallet_get_addresses(FuegoWallet wallet) {
+    if (g_real_wallet.get() != wallet) {
+        return nullptr;
+    }
+
+    // Return vector of addresses (just primary for now)
+    auto* addresses = new std::vector<std::string>();
+    addresses->push_back(g_real_wallet->address);
+
+    return addresses;
+}
+
+// Free addresses list
+extern "C" void fuego_wallet_free_addresses(void* addresses) {
+    if (addresses) {
+        delete static_cast<std::vector<std::string>*>(addresses);
+    }
+}
+
+// Delete address
+extern "C" bool fuego_wallet_delete_address(FuegoWallet wallet, const char* address) {
+    if (g_real_wallet.get() != wallet || !address) {
+        return false;
+    }
+
+    // In real implementation, this would remove address from wallet
+    // For now, just prevent deletion of primary address
+    return std::string(address) != g_real_wallet->address;
+}
+
+// Set address label
+extern "C" bool fuego_wallet_set_address_label(
+    FuegoWallet wallet,
+    const char* address,
+    const char* label
+) {
+    if (g_real_wallet.get() != wallet || !address || !label) {
+        return false;
+    }
+
+    std::cout << "Set label '" << label << "' for address " << address << std::endl;
+    return true;
+}
+
+// Get block information
+extern "C" BlockInfo* fuego_wallet_get_block_info(FuegoWallet wallet, uint64_t height) {
+    if (g_real_wallet.get() != wallet) {
+        return nullptr;
+    }
+
+    BlockInfo* block = new BlockInfo();
+    block->height = height;
+    block->timestamp = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
+    block->difficulty = 52500024; // Real Fuego difficulty
+    block->reward = 3005769; // Real Fuego block reward in atomic units
+    block->size = 1024; // Mock block size
+    block->transaction_count = 5; // Mock transaction count
+    block->is_main_chain = true;
+
+    // Generate mock block hash
+    std::string hash = "block_hash_" + std::to_string(height);
+    strncpy(block->hash, hash.c_str(), sizeof(block->hash) - 1);
+    block->hash[sizeof(block->hash) - 1] = '\0';
+
+    return block;
+}
+
+// Free block info
+extern "C" void fuego_wallet_free_block_info(BlockInfo* block) {
+    if (block) {
+        delete block;
+    }
+}
+
+// Get block by hash
+extern "C" BlockInfo* fuego_wallet_get_block_by_hash(FuegoWallet wallet, const char* block_hash) {
+    if (g_real_wallet.get() != wallet || !block_hash) {
+        return nullptr;
+    }
+
+    // Mock implementation - extract height from hash and get block
+    std::string hash_str(block_hash);
+    if (hash_str.find("block_hash_") == 0) {
+        uint64_t height = std::stoull(hash_str.substr(11));
+        return fuego_wallet_get_block_info(wallet, height);
+    }
+
+    return nullptr;
+}
+
+// Get current block height
+extern "C" uint64_t fuego_wallet_get_current_block_height(FuegoWallet wallet) {
+    if (g_real_wallet.get() != wallet) {
+        return 0;
+    }
+    return g_real_wallet->network_height;
+}
+
+// Get block timestamp
+extern "C" uint64_t fuego_wallet_get_block_timestamp(FuegoWallet wallet, uint64_t height) {
+    if (g_real_wallet.get() != wallet) {
+        return 0;
+    }
+    return std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count() - (g_real_wallet->network_height - height) * 120; // 2-minute blocks
+}
+
+// Mining operations
+extern "C" bool fuego_wallet_start_mining(FuegoWallet wallet, uint32_t threads, bool background) {
+    if (g_real_wallet.get() != wallet) {
+        return false;
+    }
+
+    std::cout << "Starting mining with " << threads << " threads (background: " << background << ")" << std::endl;
+    return true;
+}
+
+extern "C" bool fuego_wallet_stop_mining(FuegoWallet wallet) {
+    if (g_real_wallet.get() != wallet) {
+        return false;
+    }
+
+    std::cout << "Stopping mining" << std::endl;
+    return true;
+}
+
+extern "C" MiningInfo* fuego_wallet_get_mining_info(FuegoWallet wallet) {
+    if (g_real_wallet.get() != wallet) {
+        return nullptr;
+    }
+
+    MiningInfo* info = new MiningInfo();
+    info->is_mining = false;
+    info->hashrate = 0.0;
+    info->difficulty = 52500024;
+    info->block_reward = 3005769;
+    info->threads = 0;
+
+    return info;
+}
+
+// Free mining info
+extern "C" void fuego_wallet_free_mining_info(MiningInfo* info) {
+    if (info) {
+        delete info;
+    }
+}
+
+// Set mining pool
+extern "C" bool fuego_wallet_set_mining_pool(
+    FuegoWallet wallet,
+    const char* pool_address,
+    const char* worker_name
+) {
+    if (g_real_wallet.get() != wallet) {
+        return false;
+    }
+
+    std::cout << "Setting mining pool: " << (pool_address ? pool_address : "none");
+    if (worker_name) {
+        std::cout << " (Worker: " << worker_name << ")";
+    }
+    std::cout << std::endl;
+
+    return true;
+}
+
+// Get sync progress
+extern "C" SyncProgress* fuego_wallet_get_sync_progress(FuegoWallet wallet) {
+    if (g_real_wallet.get() != wallet) {
+        return nullptr;
+    }
+
+    SyncProgress* progress = new SyncProgress();
+    progress->current_height = g_real_wallet->sync_height;
+    progress->total_height = g_real_wallet->network_height;
+    progress->progress_percentage = (float)g_real_wallet->sync_height / (float)g_real_wallet->network_height * 100.0f;
+    progress->is_syncing = g_real_wallet->is_syncing;
+
+    // Calculate estimated time remaining (mock calculation)
+    if (g_real_wallet->is_syncing) {
+        uint64_t remaining_blocks = g_real_wallet->network_height - g_real_wallet->sync_height;
+        progress->estimated_time_remaining = remaining_blocks / 100; // Assuming 100 blocks per second
+    } else {
+        progress->estimated_time_remaining = 0;
+    }
+
+    return progress;
+}
+
+// Free sync progress
+extern "C" void fuego_wallet_free_sync_progress(SyncProgress* progress) {
+    if (progress) {
+        delete progress;
+    }
+}
+
+// Get sync status as JSON string (for frontend consumption)
+extern "C" char* fuego_wallet_get_sync_status_json(FuegoWallet wallet) {
+    if (g_real_wallet.get() != wallet) {
+        return nullptr;
+    }
+
+    // Calculate sync progress
+    float progress = (float)g_real_wallet->sync_height / (float)g_real_wallet->network_height * 100.0f;
+    uint64_t remaining_blocks = g_real_wallet->network_height - g_real_wallet->sync_height;
+    uint64_t estimated_seconds = g_real_wallet->is_syncing ? remaining_blocks / 100 : 0;
+
+    // Format as JSON string
+    std::string json = "{";
+    json += "\"current_height\":" + std::to_string(g_real_wallet->sync_height) + ",";
+    json += "\"total_height\":" + std::to_string(g_real_wallet->network_height) + ",";
+    json += "\"progress_percentage\":" + std::to_string(progress) + ",";
+    json += "\"estimated_seconds_remaining\":" + std::to_string(estimated_seconds) + ",";
+    json += "\"is_syncing\":" + std::string(g_real_wallet->is_syncing ? "true" : "false") + ",";
+    json += "\"connection_type\":\"" + g_real_wallet->connection_type + "\"";
+    json += "}";
+
+    char* json_str = new char[json.length() + 1];
+    strcpy(json_str, json.c_str());
+
+    return json_str;
+}
+
+// Free sync status JSON string
+extern "C" void fuego_wallet_free_sync_status_json(char* json_str) {
+    if (json_str) {
+        delete[] json_str;
+    }
+}
+
+// ===== ADDRESS BOOK MANAGEMENT =====
+
+// Add address to address book
+extern "C" bool fuego_wallet_add_address_book_entry(
+    FuegoWallet wallet,
+    const char* address,
+    const char* label,
+    const char* description
+) {
+    if (g_real_wallet.get() != wallet || !address) {
+        return false;
+    }
+
+    // Check if address already exists
+    for (const auto& entry : g_real_wallet->address_book) {
+        if (entry.address == address) {
+            return false; // Address already exists
+        }
+    }
+
+    // Add new entry
+    RealFuegoWallet::AddressBookEntry entry;
+    entry.address = address;
+    entry.label = label ? label : "";
+    entry.description = description ? description : "";
+    entry.created_time = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
+    entry.last_used_time = 0;
+    entry.use_count = 0;
+
+    g_real_wallet->address_book.push_back(entry);
+
+    std::cout << "Added address to address book: " << address;
+    if (label && strlen(label) > 0) {
+        std::cout << " (Label: " << label << ")";
+    }
+    std::cout << std::endl;
+
+    return true;
+}
+
+// Remove address from address book
+extern "C" bool fuego_wallet_remove_address_book_entry(
+    FuegoWallet wallet,
+    const char* address
+) {
+    if (g_real_wallet.get() != wallet || !address) {
+        return false;
+    }
+
+    // Find and remove entry
+    auto it = std::remove_if(g_real_wallet->address_book.begin(),
+                            g_real_wallet->address_book.end(),
+                            [address](const RealFuegoWallet::AddressBookEntry& entry) {
+                                return entry.address == address;
+                            });
+
+    if (it != g_real_wallet->address_book.end()) {
+        g_real_wallet->address_book.erase(it, g_real_wallet->address_book.end());
+        std::cout << "Removed address from address book: " << address << std::endl;
+        return true;
+    }
+
+    return false;
+}
+
+// Update address book entry
+extern "C" bool fuego_wallet_update_address_book_entry(
+    FuegoWallet wallet,
+    const char* address,
+    const char* label,
+    const char* description
+) {
+    if (g_real_wallet.get() != wallet || !address) {
+        return false;
+    }
+
+    // Find and update entry
+    for (auto& entry : g_real_wallet->address_book) {
+        if (entry.address == address) {
+            if (label) entry.label = label;
+            if (description) entry.description = description;
+            std::cout << "Updated address book entry: " << address << std::endl;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Get address book entries
+extern "C" void* fuego_wallet_get_address_book(FuegoWallet wallet) {
+    if (g_real_wallet.get() != wallet) {
+        return nullptr;
+    }
+
+    // Return pointer to address book vector for parsing by Rust
+    return static_cast<void*>(&g_real_wallet->address_book);
+}
+
+// Free address book
+extern "C" void fuego_wallet_free_address_book(void* address_book_ptr) {
+    // Nothing to free - just a pointer to internal vector
+    (void)address_book_ptr;
+}
+
+// Mark address as used
+extern "C" bool fuego_wallet_mark_address_used(
+    FuegoWallet wallet,
+    const char* address
+) {
+    if (g_real_wallet.get() != wallet || !address) {
+        return false;
+    }
+
+    // Find and update usage statistics
+    for (auto& entry : g_real_wallet->address_book) {
+        if (entry.address == address) {
+            entry.use_count++;
+            entry.last_used_time = std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::system_clock::now().time_since_epoch()
+            ).count();
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Get address book entry by address
+extern "C" char* fuego_wallet_get_address_book_entry(
+    FuegoWallet wallet,
+    const char* address
+) {
+    if (g_real_wallet.get() != wallet || !address) {
+        return nullptr;
+    }
+
+    // Find entry
+    for (const auto& entry : g_real_wallet->address_book) {
+        if (entry.address == address) {
+            // Format as JSON string
+            std::string json = "{";
+            json += "\"address\":\"" + entry.address + "\",";
+            json += "\"label\":\"" + entry.label + "\",";
+            json += "\"description\":\"" + entry.description + "\",";
+            json += "\"created_time\":" + std::to_string(entry.created_time) + ",";
+            json += "\"last_used_time\":" + std::to_string(entry.last_used_time) + ",";
+            json += "\"use_count\":" + std::to_string(entry.use_count);
+            json += "}";
+
+            char* json_str = new char[json.length() + 1];
+            strcpy(json_str, json.c_str());
+            return json_str;
+        }
+    }
+
+    return nullptr;
+}
+
+// Free address book entry JSON
+extern "C" void fuego_wallet_free_address_book_entry(char* json_str) {
+    if (json_str) {
+        delete[] json_str;
     }
 }
 

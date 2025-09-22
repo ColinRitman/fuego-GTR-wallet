@@ -1,4 +1,4 @@
-name: CI - Build (All OS)
+name: CI
 
 on:
   push:

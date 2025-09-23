@@ -119,6 +119,7 @@ pub fn run() {
             get_transaction_history,
             get_sync_progress,
             get_sync_status_json,
+            set_mining_pool,
             // Address book commands
             add_address_book_entry,
             remove_address_book_entry,
@@ -126,6 +127,18 @@ pub fn run() {
             get_address_book,
             mark_address_used,
             get_address_book_entry,
+            // Enhanced mining commands
+            get_mining_stats_json,
+            // Secure key management commands
+            generate_seed_phrase,
+            validate_seed_phrase,
+            derive_keys_from_seed,
+            get_seed_phrase,
+            get_view_key,
+            get_spend_key,
+            has_keys,
+            export_keys,
+            import_keys,
         ])
         .setup(|_app| {
             info!("Fuego Desktop Wallet initialized successfully");
@@ -1335,6 +1348,140 @@ async fn get_address_book_entry(address: String) -> Result<Option<serde_json::Va
         }))),
         Ok(None) => Ok(None),
         Err(e) => Err(format!("Failed to get address book entry: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn set_mining_pool(pool_address: Option<String>, worker_name: Option<String>) -> Result<(), String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.set_mining_pool(pool_address.as_deref(), worker_name.as_deref()) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to set mining pool: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn get_mining_stats_json() -> Result<String, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.get_mining_stats_json() {
+        Ok(json) => Ok(json),
+        Err(e) => Err(format!("Failed to get mining statistics: {}", e))
+    }
+}
+
+// Secure key management commands
+#[tauri::command]
+async fn generate_seed_phrase() -> Result<String, String> {
+    match RealCryptoNoteWallet::generate_seed_phrase() {
+        Ok(seed) => Ok(seed),
+        Err(e) => Err(format!("Failed to generate seed phrase: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn validate_seed_phrase(seed_phrase: String) -> Result<bool, String> {
+    match RealCryptoNoteWallet::validate_seed_phrase(&seed_phrase) {
+        Ok(is_valid) => Ok(is_valid),
+        Err(e) => Err(format!("Failed to validate seed phrase: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn derive_keys_from_seed(seed_phrase: String, password: String) -> Result<(), String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.derive_keys_from_seed(&seed_phrase, &password) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to derive keys from seed: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn get_seed_phrase(password: String) -> Result<String, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.get_seed_phrase(&password) {
+        Ok(seed) => Ok(seed),
+        Err(e) => Err(format!("Failed to get seed phrase: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn get_view_key() -> Result<String, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.get_view_key() {
+        Ok(key) => Ok(key),
+        Err(e) => Err(format!("Failed to get view key: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn get_spend_key() -> Result<String, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.get_spend_key() {
+        Ok(key) => Ok(key),
+        Err(e) => Err(format!("Failed to get spend key: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn has_keys() -> Result<bool, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.has_keys() {
+        Ok(has_keys) => Ok(has_keys),
+        Err(e) => Err(format!("Failed to check if wallet has keys: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn export_keys() -> Result<String, String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.export_keys() {
+        Ok(keys) => Ok(keys),
+        Err(e) => Err(format!("Failed to export keys: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn import_keys(view_key: String, spend_key: String, address: String) -> Result<(), String> {
+    let mut real_wallet = RealCryptoNoteWallet::new();
+
+    let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
+        .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
+
+    match real_wallet.import_keys(&view_key, &spend_key, &address) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to import keys: {}", e))
     }
 }
 

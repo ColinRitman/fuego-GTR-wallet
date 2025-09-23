@@ -424,6 +424,114 @@ function updateSyncDisplay(syncProgress: any) {
   }
 }
 
+// Mining functions
+async function startMining() {
+  const threadsInput = document.querySelector("#mining-threads") as HTMLInputElement;
+  const poolInput = document.querySelector("#pool-address") as HTMLInputElement;
+  const workerInput = document.querySelector("#worker-name") as HTMLInputElement;
+
+  const threads = parseInt(threadsInput?.value || "4", 10);
+  const poolAddress = poolInput?.value || "";
+  const workerName = workerInput?.value || "";
+
+  if (threads < 1 || threads > 32) {
+    alert("Thread count must be between 1 and 32");
+    return;
+  }
+
+  try {
+    // Set mining pool first
+    if (poolAddress || workerName) {
+      await invoke("wallet_set_mining_pool", {
+        poolAddress: poolAddress || null,
+        workerName: workerName || null
+      });
+    }
+
+    // Start mining
+    await invoke("wallet_start_mining", { threads, background: true });
+    alert("Mining started successfully!");
+
+    // Update UI
+    updateMiningUI();
+
+  } catch (error) {
+    console.error("Failed to start mining:", error);
+    alert(`Failed to start mining: ${error}`);
+  }
+}
+
+async function stopMining() {
+  try {
+    await invoke("wallet_stop_mining");
+    alert("Mining stopped successfully!");
+
+    // Update UI
+    updateMiningUI();
+
+  } catch (error) {
+    console.error("Failed to stop mining:", error);
+    alert(`Failed to stop mining: ${error}`);
+  }
+}
+
+async function refreshMiningStats() {
+  try {
+    const statsJson = await invoke("get_mining_stats_json");
+    const stats = JSON.parse(statsJson);
+    updateMiningStatsDisplay(stats);
+  } catch (error) {
+    console.error("Failed to refresh mining stats:", error);
+  }
+}
+
+function updateMiningUI() {
+  const startBtn = document.querySelector("#start-mining-btn") as HTMLButtonElement;
+  const stopBtn = document.querySelector("#stop-mining-btn") as HTMLButtonElement;
+
+  // For now, just refresh stats
+  refreshMiningStats();
+}
+
+function updateMiningStatsDisplay(stats: any) {
+  if (miningStatusEl) {
+    miningStatusEl.textContent = stats.is_mining ? "Running" : "Stopped";
+    miningStatusEl.style.color = stats.is_mining ? "#22c55e" : "#ef4444";
+  }
+
+  if (miningStatsEl) {
+    let uptimeStr = "0s";
+    if (stats.uptime > 0) {
+      const hours = Math.floor(stats.uptime / 3600);
+      const minutes = Math.floor((stats.uptime % 3600) / 60);
+      const seconds = stats.uptime % 60;
+
+      if (hours > 0) {
+        uptimeStr = `${hours}h ${minutes}m ${seconds}s`;
+      } else if (minutes > 0) {
+        uptimeStr = `${minutes}m ${seconds}s`;
+      } else {
+        uptimeStr = `${seconds}s`;
+      }
+    }
+
+    miningStatsEl.textContent = `Hashrate: ${stats.hashrate} H/s | Threads: ${stats.threads} | Shares: ${stats.valid_shares}/${stats.valid_shares + stats.invalid_shares} | Uptime: ${uptimeStr}`;
+  }
+
+  // Update button states
+  const startBtn = document.querySelector("#start-mining-btn") as HTMLButtonElement;
+  const stopBtn = document.querySelector("#stop-mining-btn") as HTMLButtonElement;
+
+  if (startBtn && stopBtn) {
+    startBtn.disabled = stats.is_mining;
+    stopBtn.disabled = !stats.is_mining;
+  }
+}
+
+
+// Mining state
+let miningStatusEl: HTMLElement | null;
+let miningStatsEl: HTMLElement | null;
 
 // Initialize when DOM is loaded
 window.addEventListener("DOMContentLoaded", () => {
@@ -433,13 +541,23 @@ window.addEventListener("DOMContentLoaded", () => {
   transactionsEl = document.querySelector("#transactions");
   networkStatusEl = document.querySelector("#network-status");
 
+  // Mining elements
+  miningStatusEl = document.querySelector("#mining-status");
+  miningStatsEl = document.querySelector("#mining-stats");
+
   // Header buttons removed (refresh/test)
-  
+
   // Set up send transaction button
   document.querySelector("#send-btn")?.addEventListener("click", sendTransaction);
+
+  // Set up mining controls
+  document.querySelector("#start-mining-btn")?.addEventListener("click", startMining);
+  document.querySelector("#stop-mining-btn")?.addEventListener("click", stopMining);
+  document.querySelector("#refresh-mining-btn")?.addEventListener("click", refreshMiningStats);
+
   // Set up term deposits
   document.querySelector("#create-deposit-btn")?.addEventListener("click", () => createDeposit());
-  
+
   // Initialize the app
   init();
 });

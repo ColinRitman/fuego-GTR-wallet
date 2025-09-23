@@ -18,14 +18,13 @@ use crate::crypto::ffi::CryptoNoteFFI;
 use crate::crypto::real_cryptonote::{RealCryptoNoteWallet, connect_to_fuego_network, fetch_fuego_network_data};
 use crate::security::{SecurityManager, SecurityConfig, PasswordValidator, WalletEncryption};
 use crate::performance::{PerformanceMonitor, PerformanceConfig, Cache, BackgroundTaskManager};
-use crate::settings::{SettingsManager, AppSettings};
-use crate::backup::{BackupManager, BackupData, BackupType};
+use crate::settings::{SettingsManager};
+use crate::backup::{BackupManager};
 use crate::i18n::{I18nManager, LanguageInfo};
 use crate::optimization::{ResourceMonitor, MemoryOptimization, CPUOptimization, AdvancedCache, ThreadPool, PerformanceProfiler};
-use crate::advanced::{AdvancedWalletManager, AdvancedUIManager, EnhancedWalletInfo, AdvancedTransactionInfo, AdvancedNetworkInfo, AdvancedMiningInfo, AddressInfo, BlockchainExplorer};
+use crate::advanced::{AdvancedWalletManager, AdvancedUIManager, EnhancedWalletInfo, AdvancedTransactionInfo};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use std::collections::HashMap;
 
 // Global state for security, performance, settings, backup, i18n, optimization, and advanced features
 static SECURITY_MANAGER: std::sync::OnceLock<Arc<SecurityManager>> = std::sync::OnceLock::new();

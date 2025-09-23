@@ -88,6 +88,11 @@ struct RealFuegoWallet {
         generate_fuego_address();
     }
     
+    ~RealFuegoWallet() {
+        // Ensure background thread is stopped before destruction
+        stop_sync_process();
+    }
+    
     void generate_fuego_address() {
         // Generate a realistic Fuego address (starts with "fire")
         std::random_device rd;
@@ -129,6 +134,9 @@ struct RealFuegoWallet {
     }
     
     void start_sync_process() {
+        // Stop any existing sync process first
+        stop_sync_process();
+        
         // Simulate blockchain sync progress
         // In a real implementation, this would connect to the actual Fuego daemon
         std::cout << "Starting blockchain sync process..." << std::endl;
@@ -146,7 +154,12 @@ struct RealFuegoWallet {
     void sync_thread_func() {
         // Simulate real-time sync progress updates
         while (sync_thread_running && sync_height < network_height) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(500)); // Update every 500ms
+            // Check shutdown flag more frequently
+            for (int i = 0; i < 5 && sync_thread_running; ++i) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Check every 100ms
+            }
+            
+            if (!sync_thread_running) break; // Exit immediately if shutdown requested
 
             if (sync_height < network_height) {
                 // Simulate realistic sync progress (variable speed)
@@ -170,12 +183,31 @@ struct RealFuegoWallet {
                           << " blocks (" << std::fixed << std::setprecision(1) << progress << "%)" << std::endl;
             }
         }
+        
+        // Thread is exiting - clean up
+        std::cout << "Sync thread exiting..." << std::endl;
     }
 
     void stop_sync_process() {
-        sync_thread_running = false;
-        if (sync_thread.joinable()) {
-            sync_thread.join();
+        if (sync_thread_running) {
+            std::cout << "Stopping sync thread..." << std::endl;
+            sync_thread_running = false;
+            
+            // Give the thread a moment to notice the flag change
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            
+            if (sync_thread.joinable()) {
+                try {
+                    sync_thread.join();
+                    std::cout << "Sync thread stopped successfully" << std::endl;
+                } catch (const std::exception& e) {
+                    std::cout << "Warning: Exception while stopping sync thread: " << e.what() << std::endl;
+                    // If join fails, detach to prevent resource leaks
+                    if (sync_thread.joinable()) {
+                        sync_thread.detach();
+                    }
+                }
+            }
         }
     }
 
@@ -211,7 +243,7 @@ extern "C" FuegoWallet fuego_wallet_create(
 ) {
     std::cout << "Creating real Fuego wallet..." << std::endl;
     
-    g_real_wallet = std::make_unique<RealFuegoWallet>();
+    g_real_wallet.reset(new RealFuegoWallet());
     g_real_wallet->password = password ? password : "";
     g_real_wallet->file_path = file_path ? file_path : "";
     g_real_wallet->restore_height = restore_height;
@@ -232,7 +264,7 @@ extern "C" FuegoWallet fuego_wallet_open(
 ) {
     std::cout << "Opening real Fuego wallet..." << std::endl;
     
-    g_real_wallet = std::make_unique<RealFuegoWallet>();
+    g_real_wallet.reset(new RealFuegoWallet());
     g_real_wallet->password = password ? password : "";
     g_real_wallet->file_path = file_path ? file_path : "";
     
@@ -249,6 +281,7 @@ extern "C" FuegoWallet fuego_wallet_open(
 extern "C" void fuego_wallet_close(FuegoWallet wallet) {
     if (g_real_wallet.get() == wallet) {
         std::cout << "Closing real Fuego wallet..." << std::endl;
+        g_real_wallet->stop_sync_process(); // Stop background thread before closing
         g_real_wallet->is_open = false;
         g_real_wallet->is_connected = false;
     }
@@ -447,6 +480,7 @@ extern "C" bool fuego_wallet_disconnect_node(FuegoWallet wallet) {
     if (g_real_wallet.get() != wallet) {
         return false;
     }
+    g_real_wallet->stop_sync_process(); // Stop sync thread when disconnecting
     g_real_wallet->is_connected = false;
     g_real_wallet->is_syncing = false;
     g_real_wallet->peer_count = 0;
@@ -481,7 +515,7 @@ extern "C" uint64_t fuego_wallet_estimate_transaction_fee(
 ) {
     (void)wallet; (void)address; (void)amount; (void)mixin;
     // Return a simple fixed fee estimate for now (0.01 XFG in atomic units)
-    return 1'000'000;
+    return 1000000;
 }
 
 // Deposit functions

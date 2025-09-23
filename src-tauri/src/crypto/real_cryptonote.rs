@@ -1255,7 +1255,11 @@ impl RealCryptoNoteWallet {
 
 impl Drop for RealCryptoNoteWallet {
     fn drop(&mut self) {
-        self.close_wallet();
+        // Ensure proper cleanup when the Rust wrapper is dropped
+        if !self.wallet_ptr.is_null() {
+            log::info!("Dropping RealCryptoNoteWallet - ensuring proper cleanup");
+            self.close_wallet();
+        }
     }
 }
 

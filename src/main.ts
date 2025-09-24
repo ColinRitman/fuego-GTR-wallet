@@ -424,15 +424,14 @@ function updateSyncDisplay(syncProgress: any) {
   }
 }
 
+// Mining state
+let currentMiningTab = 'solo';
+let miningStatsInterval: number | null = null;
+
 // Mining functions
 async function startMining() {
   const threadsInput = document.querySelector("#mining-threads") as HTMLInputElement;
-  const poolInput = document.querySelector("#pool-address") as HTMLInputElement;
-  const workerInput = document.querySelector("#worker-name") as HTMLInputElement;
-
   const threads = parseInt(threadsInput?.value || "4", 10);
-  const poolAddress = poolInput?.value || "";
-  const workerName = workerInput?.value || "";
 
   if (threads < 1 || threads > 32) {
     alert("Thread count must be between 1 and 32");
@@ -440,21 +439,87 @@ async function startMining() {
   }
 
   try {
-    // Set mining pool first
-    if (poolAddress || workerName) {
-      await invoke("wallet_set_mining_pool", {
-        poolAddress: poolAddress || null,
-        workerName: workerName || null
-      });
+    let success = false;
+    
+    switch (currentMiningTab) {
+      case 'solo':
+        // Start solo mining with local daemon
+        const daemonAddress = (document.querySelector("#daemon-address") as HTMLInputElement)?.value || "127.0.0.1:20060";
+        success = await invoke("wallet_start_mining", { 
+          threads, 
+          background: true,
+          daemonAddress 
+        });
+        break;
+        
+      case 'pool':
+        // Start pool mining
+        const poolUrl = (document.querySelector("#pool-url") as HTMLInputElement)?.value || "loudmining.com";
+        const poolPort = (document.querySelector("#pool-port") as HTMLInputElement)?.value || "4444";
+        const walletAddress = (document.querySelector("#wallet-address") as HTMLInputElement)?.value;
+        const password = (document.querySelector("#pool-password") as HTMLInputElement)?.value || "x";
+        const rigId = (document.querySelector("#rig-id") as HTMLInputElement)?.value || "fuego-gtr";
+        
+        if (!walletAddress) {
+          alert("Please enter your wallet address for pool mining");
+          return;
+        }
+        
+        await invoke("wallet_set_mining_pool", {
+          poolAddress: `${poolUrl}:${poolPort}`,
+          workerName: rigId
+        });
+        
+        success = await invoke("wallet_start_mining", { 
+          threads, 
+          background: true,
+          poolWallet: walletAddress,
+          poolPassword: password
+        });
+        break;
+        
+      case 'solo-pool':
+        // Start solo mining through pool
+        const soloWalletAddress = (document.querySelector("#solo-wallet-address") as HTMLInputElement)?.value;
+        const soloRigId = (document.querySelector("#solo-rig-id") as HTMLInputElement)?.value || "fuego-gtr-solo";
+        
+        if (!soloWalletAddress) {
+          alert("Please enter your wallet address for solo pool mining");
+          return;
+        }
+        
+        await invoke("wallet_set_mining_pool", {
+          poolAddress: "solo.loudmining.com:7777",
+          workerName: soloRigId
+        });
+        
+        success = await invoke("wallet_start_mining", { 
+          threads, 
+          background: true,
+          poolWallet: soloWalletAddress,
+          poolPassword: "x"
+        });
+        break;
     }
-
-    // Start mining
-    await invoke("wallet_start_mining", { threads, background: true });
-    alert("Mining started successfully!");
-
-    // Update UI
-    updateMiningUI();
-
+    
+    if (success) {
+      // Show mining stats container
+      const statsContainer = document.querySelector("#mining-stats-container") as HTMLElement;
+      if (statsContainer) {
+        statsContainer.style.display = "block";
+      }
+      
+      // Update UI
+      updateMiningUI(true);
+      
+      // Start polling for stats
+      if (miningStatsInterval) {
+        clearInterval(miningStatsInterval);
+      }
+      miningStatsInterval = setInterval(refreshMiningStats, 1000);
+    } else {
+      alert("Failed to start mining. Check your configuration.");
+    }
   } catch (error) {
     console.error("Failed to start mining:", error);
     alert(`Failed to start mining: ${error}`);
@@ -464,10 +529,21 @@ async function startMining() {
 async function stopMining() {
   try {
     await invoke("wallet_stop_mining");
-    alert("Mining stopped successfully!");
-
+    
+    // Hide mining stats container
+    const statsContainer = document.querySelector("#mining-stats-container") as HTMLElement;
+    if (statsContainer) {
+      statsContainer.style.display = "none";
+    }
+    
+    // Stop polling
+    if (miningStatsInterval) {
+      clearInterval(miningStatsInterval);
+      miningStatsInterval = null;
+    }
+    
     // Update UI
-    updateMiningUI();
+    updateMiningUI(false);
 
   } catch (error) {
     console.error("Failed to stop mining:", error);
@@ -485,46 +561,128 @@ async function refreshMiningStats() {
   }
 }
 
-function updateMiningUI() {
-  const startBtn = document.querySelector("#start-mining-btn") as HTMLButtonElement;
-  const stopBtn = document.querySelector("#stop-mining-btn") as HTMLButtonElement;
-
-  // For now, just refresh stats
-  refreshMiningStats();
-}
-
-function updateMiningStatsDisplay(stats: any) {
-  if (miningStatusEl) {
-    miningStatusEl.textContent = stats.is_mining ? "Running" : "Stopped";
-    miningStatusEl.style.color = stats.is_mining ? "#22c55e" : "#ef4444";
-  }
-
-  if (miningStatsEl) {
-    let uptimeStr = "0s";
-    if (stats.uptime > 0) {
-      const hours = Math.floor(stats.uptime / 3600);
-      const minutes = Math.floor((stats.uptime % 3600) / 60);
-      const seconds = stats.uptime % 60;
-
-      if (hours > 0) {
-        uptimeStr = `${hours}h ${minutes}m ${seconds}s`;
-      } else if (minutes > 0) {
-        uptimeStr = `${minutes}m ${seconds}s`;
-      } else {
-        uptimeStr = `${seconds}s`;
-      }
-    }
-
-    miningStatsEl.textContent = `Hashrate: ${stats.hashrate} H/s | Threads: ${stats.threads} | Shares: ${stats.valid_shares}/${stats.valid_shares + stats.invalid_shares} | Uptime: ${uptimeStr}`;
-  }
-
-  // Update button states
+function updateMiningUI(isMining: boolean) {
   const startBtn = document.querySelector("#start-mining-btn") as HTMLButtonElement;
   const stopBtn = document.querySelector("#stop-mining-btn") as HTMLButtonElement;
 
   if (startBtn && stopBtn) {
-    startBtn.disabled = stats.is_mining;
-    stopBtn.disabled = !stats.is_mining;
+    startBtn.disabled = isMining;
+    stopBtn.disabled = !isMining;
+  }
+  
+  // Disable tab switching while mining
+  document.querySelectorAll('.mining-tabs .tab').forEach(tab => {
+    (tab as HTMLButtonElement).disabled = isMining;
+  });
+  
+  // Disable all inputs while mining
+  document.querySelectorAll('.mining-content input').forEach(input => {
+    (input as HTMLInputElement).disabled = isMining;
+  });
+}
+
+function formatHashrate(hashrate: number): string {
+  if (hashrate < 1000) return `${hashrate.toFixed(2)} H/s`;
+  if (hashrate < 1000000) return `${(hashrate / 1000).toFixed(2)} KH/s`;
+  if (hashrate < 1000000000) return `${(hashrate / 1000000).toFixed(2)} MH/s`;
+  return `${(hashrate / 1000000000).toFixed(2)} GH/s`;
+}
+
+function formatUptime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+function updateMiningStatsDisplay(stats: any) {
+  // Update status
+  const statusEl = document.querySelector("#mining-status") as HTMLElement;
+  if (statusEl) {
+    statusEl.textContent = stats.is_mining ? "Mining" : "Stopped";
+    statusEl.style.color = stats.is_mining ? "#22c55e" : "#ef4444";
+  }
+
+  // Update individual stats
+  const hashrateEl = document.querySelector("#hashrate") as HTMLElement;
+  if (hashrateEl) {
+    hashrateEl.textContent = formatHashrate(stats.hashrate);
+  }
+
+  const threadsEl = document.querySelector("#active-threads") as HTMLElement;
+  if (threadsEl) {
+    threadsEl.textContent = stats.threads.toString();
+  }
+
+  const hashesEl = document.querySelector("#total-hashes") as HTMLElement;
+  if (hashesEl) {
+    hashesEl.textContent = stats.total_hashes.toLocaleString();
+  }
+
+  const validSharesEl = document.querySelector("#valid-shares") as HTMLElement;
+  if (validSharesEl) {
+    validSharesEl.textContent = stats.valid_shares.toString();
+  }
+
+  const invalidSharesEl = document.querySelector("#invalid-shares") as HTMLElement;
+  if (invalidSharesEl) {
+    invalidSharesEl.textContent = stats.invalid_shares.toString();
+  }
+
+  const acceptanceRateEl = document.querySelector("#acceptance-rate") as HTMLElement;
+  if (acceptanceRateEl) {
+    acceptanceRateEl.textContent = `${stats.share_acceptance_rate.toFixed(2)}%`;
+  }
+
+  const uptimeEl = document.querySelector("#mining-uptime") as HTMLElement;
+  if (uptimeEl) {
+    uptimeEl.textContent = formatUptime(stats.uptime);
+  }
+}
+
+// Set up mining tab switching
+function setupMiningTabs() {
+  const tabs = document.querySelectorAll('.mining-tabs .tab');
+  const tabContents = document.querySelectorAll('.tab-content');
+  
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      if ((tab as HTMLButtonElement).disabled) return;
+      
+      const tabId = tab.getAttribute('data-tab');
+      if (!tabId) return;
+      
+      // Update active tab
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      
+      // Update tab content
+      tabContents.forEach(content => {
+        if (content.id === `${tabId}-tab`) {
+          content.classList.add('active');
+        } else {
+          content.classList.remove('active');
+        }
+      });
+      
+      currentMiningTab = tabId;
+    });
+  });
+  
+  // Thread slider
+  const threadSlider = document.querySelector("#mining-threads") as HTMLInputElement;
+  const threadCount = document.querySelector("#thread-count") as HTMLElement;
+  
+  if (threadSlider && threadCount) {
+    // Set max threads based on CPU cores
+    const maxThreads = navigator.hardwareConcurrency || 4;
+    threadSlider.max = maxThreads.toString();
+    threadSlider.value = Math.max(1, Math.floor(maxThreads / 2)).toString();
+    threadCount.textContent = threadSlider.value;
+    
+    threadSlider.addEventListener('input', () => {
+      threadCount.textContent = threadSlider.value;
+    });
   }
 }
 
@@ -551,9 +709,9 @@ window.addEventListener("DOMContentLoaded", () => {
   document.querySelector("#send-btn")?.addEventListener("click", sendTransaction);
 
   // Set up mining controls
+  setupMiningTabs();
   document.querySelector("#start-mining-btn")?.addEventListener("click", startMining);
   document.querySelector("#stop-mining-btn")?.addEventListener("click", stopMining);
-  document.querySelector("#refresh-mining-btn")?.addEventListener("click", refreshMiningStats);
 
   // Set up term deposits
   document.querySelector("#create-deposit-btn")?.addEventListener("click", () => createDeposit());

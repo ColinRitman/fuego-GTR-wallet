@@ -932,34 +932,34 @@ extern "C" uint64_t fuego_wallet_get_block_timestamp(FuegoWallet wallet, uint64_
     ).count() - (g_real_wallet->network_height - height) * 120; // 2-minute blocks
 }
 
-    void mining_thread_func() {
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<> dis(1, 100);
+void mining_thread_func(RealFuegoWallet* wallet) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(1, 100);
 
-        while (mining_thread_running) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Mine every 100ms
+    while (wallet->mining_thread_running) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Mine every 100ms
 
-            if (!mining_thread_running) break;
+        if (!wallet->mining_thread_running) break;
 
-            // Simulate mining work
-            total_hashes += threads * 100; // Each thread does 100 hashes per 100ms
+        // Simulate mining work
+        wallet->total_hashes += wallet->threads * 100; // Each thread does 100 hashes per 100ms
 
-            // Simulate share submission (5% success rate)
-            int random_value = dis(gen);
-            if (random_value <= 5) { // 5% chance of finding a share
-                valid_shares++;
-                last_share_time = std::chrono::duration_cast<std::chrono::seconds>(
-                    std::chrono::system_clock::now().time_since_epoch()
-                ).count();
+        // Simulate share submission (5% success rate)
+        int random_value = dis(gen);
+        if (random_value <= 5) { // 5% chance of finding a share
+            wallet->valid_shares++;
+            wallet->last_share_time = std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::system_clock::now().time_since_epoch()
+            ).count();
 
-                std::cout << "Found valid share! Total shares: " << valid_shares << std::endl;
-            } else if (random_value <= 10) { // 5% chance of invalid share
-                invalid_shares++;
-                std::cout << "Found invalid share! Total invalid: " << invalid_shares << std::endl;
-            }
+            std::cout << "Found valid share! Total shares: " << wallet->valid_shares << std::endl;
+        } else if (random_value <= 10) { // 5% chance of invalid share
+            wallet->invalid_shares++;
+            std::cout << "Found invalid share! Total invalid: " << wallet->invalid_shares << std::endl;
         }
     }
+}
 
 // Mining operations
 extern "C" bool fuego_wallet_start_mining(FuegoWallet wallet, uint32_t threads, bool background) {
@@ -997,7 +997,7 @@ extern "C" bool fuego_wallet_start_mining(FuegoWallet wallet, uint32_t threads, 
 
     // Start mining simulation thread
     g_real_wallet->mining_thread_running = true;
-    g_real_wallet->mining_thread = std::thread(&RealFuegoWallet::mining_thread_func, g_real_wallet.get());
+    g_real_wallet->mining_thread = std::thread(mining_thread_func, g_real_wallet.get());
 
     return true;
 }

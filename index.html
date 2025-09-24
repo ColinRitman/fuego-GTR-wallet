@@ -94,33 +94,143 @@
           </div>
         </div>
 
-        <div class="mining-section">
+        <div class="mining-section" id="mining-section">
           <h2>Mining Control</h2>
-          <div class="mining-info">
-            <div class="mining-status">
-              <h3>Mining Status: <span id="mining-status">Stopped</span></h3>
-              <div id="mining-stats" class="mining-stats">
-                Hashrate: 0 H/s | Threads: 0 | Shares: 0/0 | Uptime: 0s
+          
+          <div class="mining-tabs">
+            <button class="tab active" data-tab="solo">Solo Mining</button>
+            <button class="tab" data-tab="pool">Pool Mining</button>
+            <button class="tab" data-tab="solo-pool">Solo Pool Mining</button>
+          </div>
+
+          <div class="mining-content">
+            <!-- Solo Mining Tab -->
+            <div class="tab-content active" id="solo-tab">
+              <h3>Solo Mining Configuration</h3>
+              <p class="mining-info">
+                Mine directly to your wallet using the local daemon. 
+                You'll receive the full block reward when you find a block.
+              </p>
+              
+              <div class="form-group">
+                <label for="daemon-address">Daemon Address:</label>
+                <input type="text" id="daemon-address" value="127.0.0.1:20060" placeholder="127.0.0.1:20060" class="form-input">
               </div>
             </div>
 
+            <!-- Pool Mining Tab -->
+            <div class="tab-content" id="pool-tab">
+              <h3>Pool Mining Configuration</h3>
+              <p class="mining-info">
+                Mine with others to receive more frequent, smaller rewards.
+                Recommended for most miners.
+              </p>
+              
+              <div class="form-group">
+                <label for="pool-url">Pool URL:</label>
+                <input type="text" id="pool-url" value="loudmining.com" class="form-input">
+              </div>
+              
+              <div class="form-group">
+                <label for="pool-port">Pool Port:</label>
+                <input type="number" id="pool-port" value="4444" class="form-input">
+              </div>
+              
+              <div class="form-group">
+                <label for="wallet-address">Wallet Address:</label>
+                <input type="text" id="wallet-address" placeholder="Your XFG wallet address" class="form-input">
+              </div>
+              
+              <div class="form-group">
+                <label for="pool-password">Password (usually 'x'):</label>
+                <input type="text" id="pool-password" value="x" class="form-input">
+              </div>
+              
+              <div class="form-group">
+                <label for="rig-id">Rig ID:</label>
+                <input type="text" id="rig-id" value="fuego-gtr" class="form-input">
+              </div>
+            </div>
+
+            <!-- Solo Pool Mining Tab -->
+            <div class="tab-content" id="solo-pool-tab">
+              <h3>Solo Pool Mining Configuration</h3>
+              <p class="mining-info">
+                Mine solo through LOUD Mining's solo pool. Get the full block reward 
+                minus a small pool fee when you find a block.
+              </p>
+              
+              <div class="form-group">
+                <label for="solo-wallet-address">Wallet Address:</label>
+                <input type="text" id="solo-wallet-address" placeholder="Your XFG wallet address" class="form-input">
+              </div>
+              
+              <div class="form-group">
+                <label for="solo-rig-id">Rig ID:</label>
+                <input type="text" id="solo-rig-id" value="fuego-gtr-solo" class="form-input">
+              </div>
+              
+              <p class="pool-info">
+                Solo pool address: solo.loudmining.com:7777
+              </p>
+            </div>
+
+            <!-- Common Controls -->
             <div class="mining-controls">
               <div class="form-group">
-                <label for="mining-threads">Threads:</label>
-                <input type="number" id="mining-threads" min="1" max="32" value="4" class="form-input">
+                <label for="mining-threads">Mining Threads: <span id="thread-count">4</span></label>
+                <input type="range" id="mining-threads" min="1" max="16" value="4" class="form-range">
               </div>
-              <div class="form-group">
-                <label for="pool-address">Pool Address:</label>
-                <input type="text" id="pool-address" placeholder="pool.fuego.network:3333" class="form-input">
-              </div>
-              <div class="form-group">
-                <label for="worker-name">Worker Name:</label>
-                <input type="text" id="worker-name" placeholder="worker1" class="form-input">
-              </div>
+
               <div class="mining-buttons">
                 <button id="start-mining-btn" class="btn btn-primary">Start Mining</button>
-                <button id="stop-mining-btn" class="btn btn-secondary" disabled>Stop Mining</button>
-                <button id="refresh-mining-btn" class="btn btn-secondary">Refresh Stats</button>
+                <button id="stop-mining-btn" class="btn btn-danger" disabled>Stop Mining</button>
+              </div>
+            </div>
+
+            <!-- Mining Statistics -->
+            <div class="mining-stats-container" id="mining-stats-container" style="display: none;">
+              <h3>Mining Statistics</h3>
+              <div class="stats-grid">
+                <div class="stat-item">
+                  <span class="stat-label">Status:</span>
+                  <span class="stat-value" id="mining-status">Stopped</span>
+                </div>
+                
+                <div class="stat-item">
+                  <span class="stat-label">Hashrate:</span>
+                  <span class="stat-value" id="hashrate">0 H/s</span>
+                </div>
+                
+                <div class="stat-item">
+                  <span class="stat-label">Threads:</span>
+                  <span class="stat-value" id="active-threads">0</span>
+                </div>
+                
+                <div class="stat-item">
+                  <span class="stat-label">Total Hashes:</span>
+                  <span class="stat-value" id="total-hashes">0</span>
+                </div>
+                
+                <div class="stat-item">
+                  <span class="stat-label">Valid Shares:</span>
+                  <span class="stat-value" id="valid-shares">0</span>
+                </div>
+                
+                <div class="stat-item">
+                  <span class="stat-label">Invalid Shares:</span>
+                  <span class="stat-value" id="invalid-shares">0</span>
+                </div>
+                
+                <div class="stat-item">
+                  <span class="stat-label">Acceptance Rate:</span>
+                  <span class="stat-value" id="acceptance-rate">0%</span>
+                </div>
+                
+                <div class="stat-item">
+                  <span class="stat-label">Uptime:</span>
+                  <span class="stat-value" id="mining-uptime">00:00:00</span>
+                </div>
               </div>
             </div>
           </div>

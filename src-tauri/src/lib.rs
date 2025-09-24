@@ -120,6 +120,10 @@ pub fn run() {
             get_sync_progress,
             get_sync_status_json,
             set_mining_pool,
+            wallet_start_mining,
+            wallet_stop_mining,
+            wallet_set_mining_pool,
+            get_mining_status,
             // Address book commands
             add_address_book_entry,
             remove_address_book_entry,
@@ -1137,15 +1141,36 @@ async fn get_block_info(height: u64) -> Result<serde_json::Value, String> {
 
 // Mining commands
 #[tauri::command]
-async fn start_mining(threads: u32, background: bool) -> Result<(), String> {
+async fn start_mining(
+    threads: u32, 
+    background: bool,
+    daemon_address: Option<String>,
+    pool_wallet: Option<String>,
+    pool_password: Option<String>
+) -> Result<bool, String> {
     let mut real_wallet = RealCryptoNoteWallet::new();
 
     let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
         .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
 
+    // If daemon address is provided, set it for solo mining
+    if let Some(address) = daemon_address {
+        // TODO: Set daemon address for solo mining
+        println!("Solo mining with daemon: {}", address);
+    }
+
+    // If pool wallet is provided, configure pool mining
+    if let Some(wallet) = pool_wallet {
+        println!("Pool mining with wallet: {}", wallet);
+        // TODO: Pass wallet and password to mining pool
+    }
+
     match real_wallet.start_mining(threads, background) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(format!("Failed to start mining: {}", e))
+        Ok(_) => Ok(true),
+        Err(e) => {
+            eprintln!("Failed to start mining: {}", e);
+            Ok(false)
+        }
     }
 }
 
@@ -1375,6 +1400,33 @@ async fn get_mining_stats_json() -> Result<String, String> {
         Ok(json) => Ok(json),
         Err(e) => Err(format!("Failed to get mining statistics: {}", e))
     }
+}
+
+// Wrapper commands for compatibility with frontend
+#[tauri::command]
+async fn wallet_start_mining(
+    threads: u32, 
+    background: bool,
+    daemon_address: Option<String>,
+    pool_wallet: Option<String>,
+    pool_password: Option<String>
+) -> Result<bool, String> {
+    start_mining(threads, background, daemon_address, pool_wallet, pool_password).await
+}
+
+#[tauri::command]
+async fn wallet_stop_mining() -> Result<(), String> {
+    stop_mining().await
+}
+
+#[tauri::command]
+async fn wallet_set_mining_pool(pool_address: Option<String>, worker_name: Option<String>) -> Result<(), String> {
+    set_mining_pool(pool_address, worker_name).await
+}
+
+#[tauri::command]
+async fn get_mining_status() -> Result<String, String> {
+    get_mining_stats_json().await
 }
 
 // Secure key management commands

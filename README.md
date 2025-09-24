@@ -188,7 +188,7 @@ The GitHub Actions workflows automatically build for all platforms:
 - **Audit Logging**: Complete operation audit trail
 
 ### Reporting Security Issues
-Please report security vulnerabilities privately to [security@fuego.network](mailto:security@fuego.network). See [SECURITY.md](SECURITY.md) for more details.
+Please report security vulnerabilities privately see [SECURITY.md](SECURITY.md) for more details.
 
 ## 🌐 Internationalization
 
@@ -234,7 +234,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Tauri Team** - For desktop app framework
 - **CryptoNote Community** - For underlying privacy blockchain technology
 - **Fuego Network** - For cryptocurrency network & XFG banking ecosystem
-- **Contributors** - All the amazing people who contribute to this project
+- **Contributors** - All de-amazing people who contribute to this project
 
 ## 📊 Project Status
 

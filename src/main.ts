@@ -554,7 +554,7 @@ async function stopMining() {
 async function refreshMiningStats() {
   try {
     const statsJson = await invoke("get_mining_stats_json");
-    const stats = JSON.parse(statsJson);
+    const stats = JSON.parse(statsJson as string);
     updateMiningStatsDisplay(stats);
   } catch (error) {
     console.error("Failed to refresh mining stats:", error);
@@ -688,8 +688,6 @@ function setupMiningTabs() {
 
 
 // Mining state
-let miningStatusEl: HTMLElement | null;
-let miningStatsEl: HTMLElement | null;
 
 // Initialize when DOM is loaded
 window.addEventListener("DOMContentLoaded", () => {
@@ -700,8 +698,6 @@ window.addEventListener("DOMContentLoaded", () => {
   networkStatusEl = document.querySelector("#network-status");
 
   // Mining elements
-  miningStatusEl = document.querySelector("#mining-status");
-  miningStatsEl = document.querySelector("#mining-stats");
 
   // Header buttons removed (refresh/test)
 

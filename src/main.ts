@@ -21,23 +21,8 @@ async function init() {
   // Load fonts from assets folder
   loadAvailableFonts();
   
-  // Connect to Fuego network automatically
-  await connectToFuegoNetwork();
-  
-  // Load initial data
-  await loadWalletInfo();
-  await loadTransactions();
-  await loadNetworkStatus();
-  await loadSyncProgress();
-  
-  // Load deposits
-  await loadDeposits();
-  
-  // Update UI
-  updateUI();
-  
-  // Start real-time updates
-  startRealTimeUpdates();
+  // Show welcome modal until a wallet is opened/created/imported
+  showWelcomeModal();
 }
 
 // Load wallet information
@@ -46,41 +31,103 @@ async function loadWalletInfo() {
     walletInfo = await invoke("wallet_get_info");
     console.log("✅ Wallet info loaded:", walletInfo);
     showStatusUpdate("Wallet Connected", "success");
+    postWalletOpenBoot();
   } catch (error) {
     console.error("❌ Failed to load wallet info:", error);
-    // Try to create a new wallet if none exists
-    await createDefaultWallet();
+    // Do not auto-create; leave welcome modal visible
   }
 }
 
 // Create a default wallet if none exists
-async function createDefaultWallet() {
+// ===== Welcome Modal Flow =====
+function showWelcomeModal() {
+  const modal = document.querySelector('#welcome-modal') as HTMLElement;
+  if (!modal) return;
+  modal.style.display = 'flex';
+
+  const setPanel = (id: string) => {
+    document.querySelectorAll('#welcome-modal .panel').forEach(p => (p as HTMLElement).style.display = 'none');
+    if (id) {
+      const panel = document.querySelector(id) as HTMLElement;
+      if (panel) panel.style.display = 'block';
+    }
+  };
+
+  // Actions
+  document.querySelector('#action-create')?.addEventListener('click', () => setPanel('#panel-create'));
+  document.querySelector('#action-open')?.addEventListener('click', () => setPanel('#panel-open'));
+  document.querySelector('#action-import-seed')?.addEventListener('click', () => setPanel('#panel-import-seed'));
+  document.querySelector('#action-import-keys')?.addEventListener('click', () => setPanel('#panel-import-keys'));
+
+  // Confirm handlers
+  document.querySelector('#open-confirm')?.addEventListener('click', async () => {
+    const path = (document.querySelector('#open-path') as HTMLInputElement)?.value?.trim();
+    const password = (document.querySelector('#open-password') as HTMLInputElement)?.value ?? '';
+    if (!path) { alert('Please enter wallet file path'); return; }
+    try {
+      await invoke('wallet_open', { filePath: path, password });
+      await afterWalletOpened(modal);
+    } catch (e) { alert(`Open failed: ${e}`); }
+  });
+
+  document.querySelector('#create-confirm')?.addEventListener('click', async () => {
+    const path = (document.querySelector('#create-path') as HTMLInputElement)?.value?.trim();
+    const password = (document.querySelector('#create-password') as HTMLInputElement)?.value ?? '';
+    if (!path || !password) { alert('Enter path and password'); return; }
+    try {
+      await invoke('wallet_create', { password, filePath: path, seedPhrase: null, restoreHeight: 0 });
+      await invoke('wallet_open', { filePath: path, password });
+      await afterWalletOpened(modal);
+    } catch (e) { alert(`Create failed: ${e}`); }
+  });
+
+  document.querySelector('#import-seed-confirm')?.addEventListener('click', async () => {
+    const seed = (document.querySelector('#import-seed-text') as HTMLTextAreaElement)?.value?.trim();
+    const rh = parseInt((document.querySelector('#import-seed-restore-height') as HTMLInputElement)?.value || '0', 10) || 0;
+    const path = (document.querySelector('#import-seed-path') as HTMLInputElement)?.value?.trim();
+    const password = (document.querySelector('#import-seed-password') as HTMLInputElement)?.value ?? '';
+    if (!seed || !path) { alert('Enter seed and wallet file path'); return; }
+    try {
+      await invoke('wallet_create', { password, filePath: path, seedPhrase: seed, restoreHeight: rh });
+      await invoke('wallet_open', { filePath: path, password });
+      await afterWalletOpened(modal);
+    } catch (e) { alert(`Import by mnemonic failed: ${e}`); }
+  });
+
+  document.querySelector('#import-keys-confirm')?.addEventListener('click', async () => {
+    const viewKey = (document.querySelector('#import-view-key') as HTMLInputElement)?.value?.trim();
+    const spendKey = (document.querySelector('#import-spend-key') as HTMLInputElement)?.value?.trim();
+    const address = (document.querySelector('#import-address') as HTMLInputElement)?.value?.trim();
+    const path = (document.querySelector('#import-keys-path') as HTMLInputElement)?.value?.trim();
+    const password = (document.querySelector('#import-keys-password') as HTMLInputElement)?.value ?? '';
+    if (!viewKey || !spendKey || !address || !path) { alert('Enter keys, address, and path'); return; }
+    try {
+      // Create empty then import keys
+      await invoke('wallet_create', { password, filePath: path, seedPhrase: null, restoreHeight: 0 });
+      await invoke('wallet_open', { filePath: path, password });
+      await invoke('import_keys', { viewKey, spendKey, address });
+      await afterWalletOpened(modal);
+    } catch (e) { alert(`Import by keys failed: ${e}`); }
+  });
+}
+
+async function afterWalletOpened(modal: HTMLElement) {
+  modal.style.display = 'none';
+  await postWalletOpenBoot();
+}
+
+async function postWalletOpenBoot() {
+  // Connect to node (remote default) and start loading data
   try {
-    console.log("🆕 Creating new Fuego wallet...");
-    showStatusUpdate("Creating wallet...", "info");
-    
-    await invoke("wallet_create", {
-      password: "defaultpassword",
-      filePath: "./fuego_wallet.wallet",
-      seedPhrase: null,
-      restoreHeight: 0
-    });
-    
-    // Open the newly created wallet
-    await invoke("wallet_open", {
-      filePath: "./fuego_wallet.wallet",
-      password: "defaultpassword"
-    });
-    
-    console.log("✅ New Fuego wallet created and opened");
-    showStatusUpdate("Wallet Created", "success");
-    
-    // Load wallet info after creation
-    walletInfo = await invoke("wallet_get_info");
-  } catch (error) {
-    console.error("❌ Failed to create wallet:", error);
-    showStatusUpdate("Wallet Error", "error");
-  }
+    await invoke('node_connect', { address: 'fuego.spaceportx.net', port: 18180 });
+  } catch (e) { console.warn('node_connect failed:', e); }
+  await loadWalletInfo();
+  await loadTransactions();
+  await loadNetworkStatus();
+  await loadSyncProgress();
+  await loadDeposits();
+  updateUI();
+  startRealTimeUpdates();
 }
 
 // Load transactions
@@ -118,22 +165,14 @@ async function loadSyncProgress() {
 async function connectToFuegoNetwork() {
   try {
     console.log("🔗 Connecting to Fuego L1 network...");
-    const connected = await invoke("wallet_connect_node", {
-      address: "fuego.spaceportx.net",
-      port: 18180
-    });
-    
-    if (connected) {
-      console.log("✅ Connected to Fuego network successfully");
-    } else {
-      console.error("❌ Failed to connect to Fuego network");
-    }
+    await invoke("node_connect", { address: "fuego.spaceportx.net", port: 18180 });
+    console.log("✅ Connected to Fuego network successfully");
   } catch (error) {
     console.error("❌ Network connection error:", error);
     // Try backup nodes
     try {
       console.log("🔄 Trying backup node...");
-      await invoke("wallet_connect_node", {
+      await invoke("node_connect", {
         address: "127.0.0.1",
         port: 18180
       });
@@ -763,4 +802,18 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // Initialize the app
   init();
+
+  // Copy address on click
+  const addressNode = document.querySelector('#address');
+  addressNode?.addEventListener('click', async () => {
+    try {
+      const addr = (addressNode as HTMLElement).textContent || '';
+      await navigator.clipboard.writeText(addr);
+      showStatusUpdate('Address copied', 'success');
+    } catch (e) {
+      console.warn('Clipboard failed, using prompt fallback');
+      const addr = (addressNode as HTMLElement).textContent || '';
+      window.prompt('Copy address:', addr);
+    }
+  });
 });

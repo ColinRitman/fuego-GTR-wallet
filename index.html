@@ -49,6 +49,91 @@
       </header>
 
       <main class="main">
+        <!-- Welcome Modal -->
+        <div id="welcome-modal" class="modal-overlay" style="display:none;">
+          <div class="modal">
+            <h2>Welcome to Fuego Wallet</h2>
+            <p>Select how you want to get started:</p>
+            <div class="modal-actions">
+              <button id="action-create" class="btn btn-primary">Create New Wallet</button>
+              <button id="action-open" class="btn btn-secondary">Open Existing Wallet</button>
+              <button id="action-import-seed" class="btn btn-secondary">Import by Mnemonic</button>
+              <button id="action-import-keys" class="btn btn-secondary">Import by Keys</button>
+            </div>
+
+            <div id="panel-open" class="panel" style="display:none;">
+              <h3>Open Wallet</h3>
+              <div class="form-group">
+                <label for="open-path">Wallet File Path</label>
+                <input id="open-path" class="form-input" placeholder="/path/to/wallet.wallet">
+              </div>
+              <div class="form-group">
+                <label for="open-password">Password</label>
+                <input id="open-password" type="password" class="form-input" placeholder="Password">
+              </div>
+              <button id="open-confirm" class="btn btn-primary">Open</button>
+            </div>
+
+            <div id="panel-create" class="panel" style="display:none;">
+              <h3>Create New Wallet</h3>
+              <div class="form-group">
+                <label for="create-path">Wallet File Path</label>
+                <input id="create-path" class="form-input" placeholder="/path/to/new.wallet">
+              </div>
+              <div class="form-group">
+                <label for="create-password">Password</label>
+                <input id="create-password" type="password" class="form-input" placeholder="Password">
+              </div>
+              <button id="create-confirm" class="btn btn-primary">Create</button>
+            </div>
+
+            <div id="panel-import-seed" class="panel" style="display:none;">
+              <h3>Import by Mnemonic</h3>
+              <div class="form-group">
+                <label for="import-seed-text">Seed Phrase</label>
+                <textarea id="import-seed-text" class="form-input" rows="3" placeholder="enter seed words..."></textarea>
+              </div>
+              <div class="form-group">
+                <label for="import-seed-restore-height">Restore Height (optional)</label>
+                <input id="import-seed-restore-height" class="form-input" placeholder="0">
+              </div>
+              <div class="form-group">
+                <label for="import-seed-path">Wallet File Path</label>
+                <input id="import-seed-path" class="form-input" placeholder="/path/to/wallet.wallet">
+              </div>
+              <div class="form-group">
+                <label for="import-seed-password">Password</label>
+                <input id="import-seed-password" type="password" class="form-input" placeholder="Password">
+              </div>
+              <button id="import-seed-confirm" class="btn btn-primary">Import</button>
+            </div>
+
+            <div id="panel-import-keys" class="panel" style="display:none;">
+              <h3>Import by Private Keys</h3>
+              <div class="form-group">
+                <label for="import-view-key">View Key</label>
+                <input id="import-view-key" class="form-input" placeholder="hex view key">
+              </div>
+              <div class="form-group">
+                <label for="import-spend-key">Spend Key</label>
+                <input id="import-spend-key" class="form-input" placeholder="hex spend key">
+              </div>
+              <div class="form-group">
+                <label for="import-address">Primary Address</label>
+                <input id="import-address" class="form-input" placeholder="fire...">
+              </div>
+              <div class="form-group">
+                <label for="import-keys-path">Wallet File Path</label>
+                <input id="import-keys-path" class="form-input" placeholder="/path/to/wallet.wallet">
+              </div>
+              <div class="form-group">
+                <label for="import-keys-password">Password</label>
+                <input id="import-keys-password" type="password" class="form-input" placeholder="Password">
+              </div>
+              <button id="import-keys-confirm" class="btn btn-primary">Import</button>
+            </div>
+          </div>
+        </div>
         <div class="wallet-overview">
           <div class="wallet-status">
             <h2>Wallet Status</h2>
@@ -62,7 +147,7 @@
 
           <div class="address-section">
             <h2>Address</h2>
-            <div id="address" class="address">Loading...</div>
+            <div id="address" class="address" title="Click to copy">Loading...</div>
           </div>
         </div>
 

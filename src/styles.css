@@ -285,6 +285,31 @@ body {
   border-color: rgba(255, 255, 255, 0.5);
 }
 
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.modal {
+  width: min(720px, 92vw);
+  background: #1f2937;
+  color: #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+
+.modal h2 { margin-bottom: 8px; }
+.modal p { margin-bottom: 16px; color: #9ca3af; }
+.modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.panel { background: #111827; padding: 16px; border-radius: 8px; border: 1px solid #374151; }
+
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
   :root {

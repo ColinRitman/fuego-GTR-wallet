@@ -270,11 +270,16 @@ impl PerformanceTimer {
         }
     }
     
-    /// Get current memory usage (simplified)
+    /// Get current memory usage (RSS in MB)
     fn get_memory_usage(&self) -> f64 {
-        // In a real implementation, this would use system APIs to get actual memory usage
-        // For now, return a placeholder value
-        10.0 // MB
+        use sysinfo::{System, SystemExt, ProcessRefreshKind, RefreshKind};
+        let mut sys = System::new();
+        sys.refresh_specifics(RefreshKind::new().with_processes(ProcessRefreshKind::everything()));
+        if let Some(proc) = sys.process(sysinfo::get_current_pid().unwrap_or_default()) {
+            // memory() returns kB on Linux
+            return (proc.memory() as f64) / 1024.0;
+        }
+        0.0
     }
     
     /// Cleanup old metrics if needed

@@ -149,7 +149,7 @@ void CreateAddress::Request::serialize(CryptoNote::ISerializer &serializer)
 
   if (hasSecretKey && hasPublicKey)
   {
-    //TODO: replace it with error codes
+    // Both secret and public spend key provided is invalid; return structured serialization error
     throw RequestSerializationError();
   }
 }

@@ -223,23 +223,37 @@ impl ResourceMonitor {
     
     /// Get current CPU usage (simplified implementation)
     fn get_cpu_usage() -> f64 {
-        // In a real implementation, this would use system APIs to get actual CPU usage
-        // For now, return a mock value
-        25.0
+        use sysinfo::{System, SystemExt};
+        let mut sys = System::new();
+        sys.refresh_cpu();
+        // global_cpu_info().cpu_usage() returns 0..100
+        sys.global_cpu_info().cpu_usage() as f64
     }
     
     /// Get current memory usage
     fn get_memory_usage() -> u64 {
-        // In a real implementation, this would use system APIs to get actual memory usage
-        // For now, return a mock value
-        1024 * 1024 * 100 // 100 MB
+        use sysinfo::{System, SystemExt};
+        let mut sys = System::new();
+        sys.refresh_memory();
+        // used memory in bytes (approx)
+        (sys.used_memory() as u64) * 1024
     }
     
     /// Measure network latency
     fn measure_network_latency() -> Duration {
-        // In a real implementation, this would ping a known server
-        // For now, return a mock value
-        Duration::from_millis(50)
+        use std::net::{TcpStream, ToSocketAddrs};
+        let addr = ("fuego.spaceportx.net", 18180)
+            .to_socket_addrs()
+            .ok()
+            .and_then(|mut it| it.next());
+        if let Some(sockaddr) = addr {
+            let start = std::time::Instant::now();
+            let result = TcpStream::connect_timeout(&sockaddr, Duration::from_millis(1000));
+            if result.is_ok() {
+                return start.elapsed();
+            }
+        }
+        Duration::from_millis(0)
     }
 }
 

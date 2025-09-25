@@ -44,8 +44,8 @@
   },
   "homepage": "https://github.com/fuego-wallet/fuego-GTR-wallet#readme",
   "dependencies": {
-    "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-opener": "^2.2.3"
+    "@tauri-apps/api": "^2.8.0",
+    "@tauri-apps/plugin-opener": "^2.5.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

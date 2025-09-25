@@ -4,16 +4,6 @@ import { invoke } from "@tauri-apps/api/core";
 let walletInfo: any = null;
 let transactions: any[] = [];
 let networkStatus: any = null;
-
-// Advanced features state
-let enhancedWalletInfo: any = null;
-let advancedTransactions: any[] = [];
-let performanceMetrics: any = null;
-let appSettings: any = null;
-// Note: currentLanguage managed by backend; keep for future UI language controls
-// const currentLanguage = 'en';
-let availableLanguages: any[] = [];
-let notifications: any[] = [];
 let deposits: any[] = [];
 let availableFonts: string[] = [];
 
@@ -26,9 +16,13 @@ let networkStatusEl: HTMLElement | null;
 
 // Initialize the application
 async function init() {
-  console.log("Initializing Fuego Desktop Wallet...");
+  console.log("🔥 Initializing Fuego Desktop Wallet...");
+  
   // Load fonts from assets folder
   loadAvailableFonts();
+  
+  // Connect to Fuego network automatically
+  await connectToFuegoNetwork();
   
   // Load initial data
   await loadWalletInfo();
@@ -36,26 +30,56 @@ async function init() {
   await loadNetworkStatus();
   await loadSyncProgress();
   
-  // Load advanced features
-  await loadEnhancedWalletInfo();
-  await loadAdvancedTransactions();
-  await loadPerformanceMetrics();
-  await loadAppSettings();
-  await loadAvailableLanguages();
-  await loadNotifications();
+  // Load deposits
   await loadDeposits();
   
   // Update UI
   updateUI();
+  
+  // Start real-time updates
+  startRealTimeUpdates();
 }
 
 // Load wallet information
 async function loadWalletInfo() {
   try {
     walletInfo = await invoke("wallet_get_info");
-    console.log("Wallet info loaded:", walletInfo);
+    console.log("✅ Wallet info loaded:", walletInfo);
+    showStatusUpdate("Wallet Connected", "success");
   } catch (error) {
-    console.error("Failed to load wallet info:", error);
+    console.error("❌ Failed to load wallet info:", error);
+    // Try to create a new wallet if none exists
+    await createDefaultWallet();
+  }
+}
+
+// Create a default wallet if none exists
+async function createDefaultWallet() {
+  try {
+    console.log("🆕 Creating new Fuego wallet...");
+    showStatusUpdate("Creating wallet...", "info");
+    
+    await invoke("wallet_create", {
+      password: "defaultpassword",
+      filePath: "./fuego_wallet.wallet",
+      seedPhrase: null,
+      restoreHeight: 0
+    });
+    
+    // Open the newly created wallet
+    await invoke("wallet_open", {
+      filePath: "./fuego_wallet.wallet",
+      password: "defaultpassword"
+    });
+    
+    console.log("✅ New Fuego wallet created and opened");
+    showStatusUpdate("Wallet Created", "success");
+    
+    // Load wallet info after creation
+    walletInfo = await invoke("wallet_get_info");
+  } catch (error) {
+    console.error("❌ Failed to create wallet:", error);
+    showStatusUpdate("Wallet Error", "error");
   }
 }
 
@@ -90,58 +114,63 @@ async function loadSyncProgress() {
   }
 }
 
-// Advanced Features Loading Functions
-async function loadEnhancedWalletInfo() {
+// Connect to Fuego network
+async function connectToFuegoNetwork() {
   try {
-    enhancedWalletInfo = await invoke('wallet_get_info');
-    console.log('Enhanced wallet info loaded:', enhancedWalletInfo);
+    console.log("🔗 Connecting to Fuego L1 network...");
+    const connected = await invoke("wallet_connect_node", {
+      address: "fuego.spaceportx.net",
+      port: 18180
+    });
+    
+    if (connected) {
+      console.log("✅ Connected to Fuego network successfully");
+    } else {
+      console.error("❌ Failed to connect to Fuego network");
+    }
   } catch (error) {
-    console.error('Failed to load enhanced wallet info:', error);
+    console.error("❌ Network connection error:", error);
+    // Try backup nodes
+    try {
+      console.log("🔄 Trying backup node...");
+      await invoke("wallet_connect_node", {
+        address: "127.0.0.1",
+        port: 18180
+      });
+    } catch (backupError) {
+      console.error("❌ Backup connection failed:", backupError);
+    }
   }
 }
 
-async function loadAdvancedTransactions() {
-  try {
-    advancedTransactions = await invoke('wallet_get_transactions');
-    console.log('Advanced transactions loaded:', advancedTransactions);
-  } catch (error) {
-    console.error('Failed to load advanced transactions:', error);
-  }
+// Start real-time updates
+function startRealTimeUpdates() {
+  // Update sync progress every 2 seconds
+  setInterval(async () => {
+    await loadSyncProgress();
+    await loadNetworkStatus();
+  }, 2000);
+  
+  // Update wallet info every 10 seconds
+  setInterval(async () => {
+    await loadWalletInfo();
+  }, 10000);
+  
+  // Update transactions every 30 seconds
+  setInterval(async () => {
+    await loadTransactions();
+  }, 30000);
 }
 
-async function loadPerformanceMetrics() {
+// Real-time wallet refresh
+async function refreshWallet() {
   try {
-    performanceMetrics = await invoke('get_performance_metrics');
-    console.log('Performance metrics loaded:', performanceMetrics);
+    await invoke("wallet_refresh");
+    await loadWalletInfo();
+    await loadTransactions();
+    console.log("✅ Wallet refreshed");
   } catch (error) {
-    console.error('Failed to load performance metrics:', error);
-  }
-}
-
-async function loadAppSettings() {
-  try {
-    appSettings = await invoke('get_app_settings');
-    console.log('App settings loaded:', appSettings);
-  } catch (error) {
-    console.error('Failed to load app settings:', error);
-  }
-}
-
-async function loadAvailableLanguages() {
-  try {
-    availableLanguages = await invoke('get_available_app_languages');
-    console.log('Available languages loaded:', availableLanguages);
-  } catch (error) {
-    console.error('Failed to load available languages:', error);
-  }
-}
-
-async function loadNotifications() {
-  try {
-    notifications = await invoke('get_notifications');
-    console.log('Notifications loaded:', notifications);
-  } catch (error) {
-    console.error('Failed to load notifications:', error);
+    console.error("❌ Failed to refresh wallet:", error);
   }
 }
 
@@ -303,37 +332,41 @@ function updateUI() {
   // Update sync progress display
   updateSyncDisplay(networkStatus);
   
-  // Update advanced features
-  updateAdvancedUI();
+  // Update last refresh time
+  const lastUpdateEl = document.querySelector("#last-update");
+  if (lastUpdateEl) {
+    lastUpdateEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+  }
 }
 
 // Refresh data
 async function refresh() {
-  await loadWalletInfo();
-  await loadTransactions();
+  await refreshWallet();
   await loadNetworkStatus();
   await loadSyncProgress();
   updateUI();
   await loadDeposits();
 }
 
-// Advanced UI updater (placeholder rendering of enhanced info and notifications)
-function updateAdvancedUI() {
-  // Optionally render enhancedWalletInfo somewhere if needed
-  // For now, keep minimal to avoid DOM elements that don't exist yet
+// Show real-time status updates
+function showStatusUpdate(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
+  console.log(`${type.toUpperCase()}: ${message}`);
+  
+  // You could add toast notifications here if needed
+  const statusEl = document.querySelector('#wallet-status');
+  if (statusEl) {
+    statusEl.textContent = message;
+    statusEl.className = `status ${type === 'success' ? 'connected' : 'disconnected'}`;
+  }
 }
 
 // ===== Fonts =====
 function loadAvailableFonts() {
-  // Hardcode scan of common font filenames in src/assets/fonts
-  // In a more advanced setup, this list can be generated at build-time.
+  // Use actual project fonts from src/assets/fonts
   availableFonts = [
     'Orbitron',
-    'Inter',
-    'Roboto',
-    'OpenSans',
-    'Montserrat',
-    'Lato',
+    'BelligoesRegular',
+    'HoloJacket',
   ];
   const select = document.querySelector('#font-select') as HTMLSelectElement | null;
   if (!select) return;
@@ -396,30 +429,46 @@ async function sendTransaction() {
   }
 }
 
-// Update sync progress display
+// Update sync progress display (consolidated)
 function updateSyncDisplay(syncProgress: any) {
-  const syncProgressEl = document.querySelector("#sync-progress");
+  const syncProgressTextEl = document.querySelector("#sync-progress-text");
   const syncDetailsEl = document.querySelector("#sync-details");
   const syncFillEl = document.querySelector(".sync-fill");
+  const lastUpdateEl = document.querySelector("#last-update");
 
-  if (syncProgressEl && syncDetailsEl) {
-    if (syncProgress.is_syncing) {
-      const progress = syncProgress.progress_percentage.toFixed(1);
-      syncProgressEl.textContent = `Syncing... ${progress}%`;
-      syncDetailsEl.textContent = `Block ${syncProgress.current_height.toLocaleString()} of ${syncProgress.total_height.toLocaleString()}`;
+  if (syncProgressTextEl && syncDetailsEl) {
+    if (syncProgress && syncProgress.is_syncing) {
+      const progress = syncProgress.progress_percentage ? syncProgress.progress_percentage.toFixed(1) : '0.0';
+      const currentHeight = syncProgress.current_height ? syncProgress.current_height.toLocaleString() : '0';
+      const totalHeight = syncProgress.total_height ? syncProgress.total_height.toLocaleString() : '0';
+      
+      syncProgressTextEl.textContent = `🔄 Syncing... ${progress}%`;
+      syncDetailsEl.textContent = `Block ${currentHeight} of ${totalHeight}`;
 
       // Update progress bar
       if (syncFillEl) {
-        (syncFillEl as HTMLElement).style.width = `${syncProgress.progress_percentage}%`;
+        (syncFillEl as HTMLElement).style.width = `${syncProgress.progress_percentage || 0}%`;
       }
-    } else {
-      syncProgressEl.textContent = "✅ Fully Synced";
+    } else if (syncProgress && !syncProgress.is_syncing) {
+      syncProgressTextEl.textContent = "✅ Fully Synced";
       syncDetailsEl.textContent = `Connected to network`;
 
       // Fill progress bar
       if (syncFillEl) {
         (syncFillEl as HTMLElement).style.width = "100%";
       }
+    } else {
+      syncProgressTextEl.textContent = "⚠️ Disconnected";
+      syncDetailsEl.textContent = `No network connection`;
+      
+      if (syncFillEl) {
+        (syncFillEl as HTMLElement).style.width = "0%";
+      }
+    }
+
+    // Update last update time
+    if (lastUpdateEl) {
+      lastUpdateEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
     }
   }
 }

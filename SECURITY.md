@@ -2,24 +2,24 @@
 
 ## 🔒 Supported Versions
 
-We provide security updates for the following versions of FuegoGT Wallet:
+We provide security updates for the following versions of Fuego GTR Wallet:
 
 | Version | Supported          |
 | ------- | ------------------ |
 | 1.0.x   | :white_check_mark: |
 | < 1.0   | :x:                |
 
-## 🚨 Reporting a Vulnerability
+## 🚨 Reporting Vulnerabilities
 
-We take security seriously. If you discover a security vulnerability, please follow these guidelines:
+The security of Fuego's L1 network (& wallets) is paramount. If you discover a security vulnerability, please follow these simple guidelines:
 
-### ⚠️ DO NOT
+### PLEASE ⚠️ DO NOT
 - Create a public GitHub issue
 - Discuss the vulnerability publicly
 - Share details on social media
 - Contact individual maintainers directly
 
-### ✅ DO
+### PLEASE ✅ DO
 1. **Email us privately** at [security@fuego.network](mailto:security@fuego.network)
 2. **Include detailed information**:
    - Description of the vulnerability
@@ -43,9 +43,11 @@ Please provide:
 - **Status update**: Within 7 days
 - **Resolution**: Within 30 days (depending on severity)
 
-### 🏆 Recognition
+### 🏆 Reward / Recognition
 
-We appreciate security researchers who help us improve FuegoGT Wallet. Contributors will be:
+Vulnerability reports are taken seriously. If your report is indeed found to be essential to security- you will be compensated accordingly based on severity of reported issue & the quality of your disclosure, reward amounts are based in XFG and paid using resources from Fuego's Development treasury.
+We greatly appreciate security researchers helping to improve Fuego network & wallet security. 
+Contributors are:
 - Listed in our security acknowledgments
 - Invited to our security researcher program
 - Recognized in release notes (with permission)
@@ -84,7 +86,8 @@ We appreciate security researchers who help us improve FuegoGT Wallet. Contribut
 - **Keep software updated** to latest versions
 - **Verify downloads** using checksums
 - **Use secure networks** (avoid public WiFi)
-- **Enable 2FA** when available
+- **Use 2FA** (device-based) when available
+- **AVOID using Email or online account-based 2FA** when possible
 
 ### For Developers
 - **Follow secure coding practices**
@@ -138,9 +141,9 @@ We appreciate security researchers who help us improve FuegoGT Wallet. Contribut
 6. **Lessons Learned** - Improve security measures
 
 ### Contact Information
-- **Security Team**: [security@fuego.network](mailto:security@fuego.network)
-- **Emergency Contact**: [emergency@fuego.network](mailto:emergency@fuego.network)
-- **General Support**: [support@fuego.network](mailto:support@fuego.network)
+- **Security Team**: [fuegosecurity@proton.me](mailto:fuegosecurity@proton.me)
+- **Emergency Contact**: ? [founder/dev](mailto:aejt@pm.me)
+- **General Support**: [use discord](discord.usexfg.org)
 
 ## 📚 Security Resources
 
@@ -176,11 +179,11 @@ We appreciate security researchers who help us improve FuegoGT Wallet. Contribut
 
 For security-related questions or concerns:
 
-- **Email**: [security@fuego.network](mailto:security@fuego.network)
+- **Email**: [fuegosecurity@protonmail](mailto:fuegosecurity@proton.me)
 - **PGP Key**: Available upon request
 - **Signal**: For sensitive communications
-
+- **General**: Join the Fuego Mob in [discord](discord.usexfg.org)
 ---
 
-**Last Updated**: December 2024  
-**Next Review**: March 2025
+**Last Updated**: Sept 2025  
+**Next Review**: March 2026

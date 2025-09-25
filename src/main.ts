@@ -396,30 +396,46 @@ async function sendTransaction() {
   }
 }
 
-// Update sync progress display
+// Update sync progress display (consolidated)
 function updateSyncDisplay(syncProgress: any) {
-  const syncProgressEl = document.querySelector("#sync-progress");
+  const syncProgressTextEl = document.querySelector("#sync-progress-text");
   const syncDetailsEl = document.querySelector("#sync-details");
   const syncFillEl = document.querySelector(".sync-fill");
+  const lastUpdateEl = document.querySelector("#last-update");
 
-  if (syncProgressEl && syncDetailsEl) {
-    if (syncProgress.is_syncing) {
-      const progress = syncProgress.progress_percentage.toFixed(1);
-      syncProgressEl.textContent = `Syncing... ${progress}%`;
-      syncDetailsEl.textContent = `Block ${syncProgress.current_height.toLocaleString()} of ${syncProgress.total_height.toLocaleString()}`;
+  if (syncProgressTextEl && syncDetailsEl) {
+    if (syncProgress && syncProgress.is_syncing) {
+      const progress = syncProgress.progress_percentage ? syncProgress.progress_percentage.toFixed(1) : '0.0';
+      const currentHeight = syncProgress.current_height ? syncProgress.current_height.toLocaleString() : '0';
+      const totalHeight = syncProgress.total_height ? syncProgress.total_height.toLocaleString() : '0';
+      
+      syncProgressTextEl.textContent = `🔄 Syncing... ${progress}%`;
+      syncDetailsEl.textContent = `Block ${currentHeight} of ${totalHeight}`;
 
       // Update progress bar
       if (syncFillEl) {
-        (syncFillEl as HTMLElement).style.width = `${syncProgress.progress_percentage}%`;
+        (syncFillEl as HTMLElement).style.width = `${syncProgress.progress_percentage || 0}%`;
       }
-    } else {
-      syncProgressEl.textContent = "✅ Fully Synced";
+    } else if (syncProgress && !syncProgress.is_syncing) {
+      syncProgressTextEl.textContent = "✅ Fully Synced";
       syncDetailsEl.textContent = `Connected to network`;
 
       // Fill progress bar
       if (syncFillEl) {
         (syncFillEl as HTMLElement).style.width = "100%";
       }
+    } else {
+      syncProgressTextEl.textContent = "⚠️ Disconnected";
+      syncDetailsEl.textContent = `No network connection`;
+      
+      if (syncFillEl) {
+        (syncFillEl as HTMLElement).style.width = "0%";
+      }
+    }
+
+    // Update last update time
+    if (lastUpdateEl) {
+      lastUpdateEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
     }
   }
 }

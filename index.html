@@ -52,13 +52,14 @@
         </div>
 
         <div class="network-status">
-          <h2>Network Status</h2>
+          <h2>Network Status & Sync Progress</h2>
           <div id="network-status" class="network-info">Loading...</div>
-          <div id="sync-progress" class="sync-progress">
+          <div id="main-sync-progress" class="sync-progress">
             <div class="sync-bar">
               <div class="sync-fill" style="width: 0%"></div>
             </div>
-            <div class="sync-text">Syncing...</div>
+            <div id="sync-progress-text" class="sync-text">Syncing...</div>
+            <div id="sync-details" class="sync-details">Loading sync details...</div>
           </div>
           <div id="last-update" class="last-update">Last updated: --</div>
         </div>
@@ -236,13 +237,6 @@
           </div>
         </div>
 
-        <div class="sync-section">
-          <h2>Blockchain Sync</h2>
-          <div class="sync-info">
-            <div id="sync-progress" class="sync-progress">Syncing...</div>
-            <div id="sync-details" class="sync-details">Loading sync details...</div>
-          </div>
-        </div>
 
         <div class="term-deposits-section">
           <h2>Term Deposits</h2>

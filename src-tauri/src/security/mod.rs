@@ -257,28 +257,69 @@ impl PasswordValidator {
 pub struct WalletEncryption;
 
 impl WalletEncryption {
-    /// Encrypt sensitive data (placeholder implementation)
+    /// Encrypt sensitive data with AES-256-GCM using Argon2-derived key
     pub fn encrypt_data(data: &str, password: &str) -> Result<String, String> {
-        // In production, this would use proper encryption (AES-256-GCM, etc.)
-        // For now, just return base64 encoded data as placeholder
+        use aes_gcm::{Aes256Gcm, Key, Nonce};
+        use aes_gcm::aead::{Aead, OsRng};
+        use rand::RngCore;
+        use argon2::{Argon2, PasswordHasher};
+        use argon2::password_hash::{SaltString, PasswordHash, PasswordHasher as _};
         use base64::{Engine as _, engine::general_purpose};
-        let combined = format!("{}:{}", data, password);
-        Ok(general_purpose::STANDARD.encode(combined.as_bytes()))
+
+        // Derive key with Argon2id
+        let salt = SaltString::generate(&mut OsRng);
+        let argon2 = Argon2::default();
+        let hash = argon2.hash_password(password.as_bytes(), &salt)
+            .map_err(|e| format!("Argon2 error: {}", e))?;
+        // Use the hash bytes (truncate/expand) for 32-byte key
+        let key_bytes = blake3::hash(hash.hash.ok_or("Missing Argon2 hash")?.as_bytes()).as_bytes().clone();
+        let key = Key::<Aes256Gcm>::from_slice(&key_bytes);
+        let cipher = Aes256Gcm::new(key);
+
+        // Random nonce
+        let mut nonce_bytes = [0u8; 12];
+        OsRng.fill_bytes(&mut nonce_bytes);
+        let nonce = Nonce::from_slice(&nonce_bytes);
+
+        let ciphertext = cipher.encrypt(nonce, data.as_bytes())
+            .map_err(|e| format!("Encrypt error: {}", e))?;
+
+        // Pack salt | nonce | ciphertext (all base64)
+        let out = serde_json::json!({
+            "s": salt.as_str(),
+            "n": general_purpose::STANDARD.encode(nonce_bytes),
+            "c": general_purpose::STANDARD.encode(ciphertext),
+        });
+        Ok(out.to_string())
     }
     
-    /// Decrypt sensitive data (placeholder implementation)
-    pub fn decrypt_data(encrypted_data: &str, _password: &str) -> Result<String, String> {
-        // In production, this would use proper decryption
-        // For now, just decode base64 and extract data
+    /// Decrypt sensitive data with AES-256-GCM using Argon2-derived key
+    pub fn decrypt_data(encrypted_data: &str, password: &str) -> Result<String, String> {
+        use aes_gcm::{Aes256Gcm, Key, Nonce};
+        use aes_gcm::aead::{Aead};
+        use argon2::{Argon2, PasswordVerifier};
+        use argon2::password_hash::{SaltString, PasswordHash, PasswordHasher as _, PasswordVerifier as _};
         use base64::{Engine as _, engine::general_purpose};
-        let decoded = general_purpose::STANDARD.decode(encrypted_data).map_err(|e| format!("Decode error: {}", e))?;
-        let combined = String::from_utf8(decoded).map_err(|e| format!("UTF-8 error: {}", e))?;
-        
-        if let Some(data) = combined.split(':').next() {
-            Ok(data.to_string())
-        } else {
-            Err("Invalid encrypted data format".to_string())
-        }
+
+        let v: serde_json::Value = serde_json::from_str(encrypted_data).map_err(|e| format!("JSON error: {}", e))?;
+        let s = v.get("s").and_then(|x| x.as_str()).ok_or("Missing salt")?;
+        let n_b64 = v.get("n").and_then(|x| x.as_str()).ok_or("Missing nonce")?;
+        let c_b64 = v.get("c").and_then(|x| x.as_str()).ok_or("Missing ciphertext")?;
+
+        let salt = SaltString::new(s).map_err(|e| format!("Salt error: {}", e))?;
+        let argon2 = Argon2::default();
+        // Derive same key
+        let hash = argon2.hash_password(password.as_bytes(), &salt)
+            .map_err(|e| format!("Argon2 error: {}", e))?;
+        let key_bytes = blake3::hash(hash.hash.ok_or("Missing Argon2 hash")?.as_bytes()).as_bytes().clone();
+        let key = Key::<Aes256Gcm>::from_slice(&key_bytes);
+        let cipher = Aes256Gcm::new(key);
+
+        let nonce_bytes = general_purpose::STANDARD.decode(n_b64).map_err(|e| format!("Nonce decode: {}", e))?;
+        let nonce = Nonce::from_slice(&nonce_bytes);
+        let ciphertext = general_purpose::STANDARD.decode(c_b64).map_err(|e| format!("Ciphertext decode: {}", e))?;
+        let plaintext = cipher.decrypt(nonce, ciphertext.as_ref()).map_err(|e| format!("Decrypt error: {}", e))?;
+        String::from_utf8(plaintext).map_err(|e| format!("UTF-8 error: {}", e))
     }
 }
 

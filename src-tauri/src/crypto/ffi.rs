@@ -41,7 +41,7 @@ extern "C" {
         amount: u64,
         payment_id: *const c_char,
         mixin: u64,
-    ) -> *mut c_void;
+    ) -> *mut c_char;
     
     fn crypto_note_wallet_get_transactions(
         wallet: *mut c_void,
@@ -233,8 +233,10 @@ impl CryptoNoteFFI {
             ));
         }
         
-        // TODO: Extract transaction hash from tx_ptr
-        Ok("tx_hash_placeholder".to_string())
+        // Extract transaction hash as C string and free
+        let c_hash = unsafe { CStr::from_ptr(tx_ptr as *const c_char).to_string_lossy().to_string() };
+        unsafe { crypto_note_wallet_free_string(tx_ptr as *mut c_char); }
+        Ok(c_hash)
     }
 }
 

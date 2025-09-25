@@ -516,8 +516,9 @@ impl RealCryptoNoteWallet {
             ));
         }
 
-        // TODO: Extract transaction hash from tx_ptr
-        let tx_hash = format!("real_tx_{}", chrono::Utc::now().timestamp());
+        // Extract transaction hash and free
+        let tx_hash = unsafe { CStr::from_ptr(tx_ptr as *const c_char).to_string_lossy().to_string() };
+        unsafe { fuego_wallet_free_string(tx_ptr as *mut c_char); }
         log::info!(
             "Real transaction sent: {} to {} amount: {}",
             tx_hash,
@@ -578,24 +579,19 @@ impl RealCryptoNoteWallet {
             ));
         }
 
-        // The C++ layer allocates a NetworkStatus-equivalent struct and returns pointer.
-        // For now, we cannot directly read fields without a matching Rust repr.
-        // As an interim, return connectivity based on internal flag; Phase 2 will parse fields via a C bridge.
-        let result = Ok(serde_json::json!({
-            "is_connected": self.is_connected,
-            "peer_count": 0,
-            "sync_height": 0,
-            "network_height": 0,
-            "is_syncing": self.is_connected,
-            "connection_type": if self.is_connected { "daemon" } else { "Disconnected" }
-        }));
-
-        // Clean up the allocated NetworkStatus pointer
-        unsafe {
-            fuego_wallet_free_network_status(status_ptr);
-        }
-
-        result
+        // Interpret as NetworkInfoFFI and convert
+        let info = unsafe { &*(status_ptr as *const NetworkInfoFFI) };
+        let connection_type = unsafe { CStr::from_ptr(info.connection_type.as_ptr()) }.to_string_lossy().to_string();
+        let json = serde_json::json!({
+            "is_connected": info.is_connected,
+            "peer_count": info.peer_count,
+            "sync_height": info.sync_height,
+            "network_height": info.network_height,
+            "is_syncing": info.is_syncing,
+            "connection_type": connection_type,
+        });
+        unsafe { fuego_wallet_free_network_status(status_ptr); }
+        Ok(json)
     }
 
     /// Get all term deposits from the wallet
@@ -755,27 +751,39 @@ impl RealCryptoNoteWallet {
             ));
         }
 
-        // TODO: Parse real transaction info from C++ data structure
-        unsafe {
-            fuego_wallet_free_transaction_info(tx_ptr);
-        }
-
-        Ok(TransactionInfo {
-            id: tx_hash.to_string(),
-            hash: tx_hash.to_string(),
-            amount: 0,
-            fee: 0,
-            height: 0,
-            timestamp: 0,
-            confirmations: 0,
-            is_confirmed: false,
-            is_pending: true,
-            payment_id: None,
-            destination_addresses: vec![],
-            source_addresses: vec![],
-            unlock_time: None,
-            extra: None,
-        })
+        let tx = unsafe { &*(tx_ptr as *const TransactionInfoFFI) };
+        let id = unsafe { CStr::from_ptr(tx.id.as_ptr()) }.to_string_lossy().to_string();
+        let hash = unsafe { CStr::from_ptr(tx.hash.as_ptr()) }.to_string_lossy().to_string();
+        let payment_id = if tx.payment_id[0] != 0 {
+            Some(unsafe { CStr::from_ptr(tx.payment_id.as_ptr()) }.to_string_lossy().to_string())
+        } else { None };
+        let destination_addresses = if tx.destination_addresses[0] != 0 {
+            vec![unsafe { CStr::from_ptr(tx.destination_addresses.as_ptr()) }.to_string_lossy().to_string()]
+        } else { vec![] };
+        let source_addresses = if tx.source_addresses[0] != 0 {
+            vec![unsafe { CStr::from_ptr(tx.source_addresses.as_ptr()) }.to_string_lossy().to_string()]
+        } else { vec![] };
+        let extra = if tx.extra[0] != 0 {
+            Some(unsafe { CStr::from_ptr(tx.extra.as_ptr()) }.to_string_lossy().to_string())
+        } else { None };
+        let out = TransactionInfo {
+            id,
+            hash,
+            amount: tx.amount,
+            fee: tx.fee,
+            height: tx.height,
+            timestamp: tx.timestamp,
+            confirmations: tx.confirmations,
+            is_confirmed: tx.is_confirmed,
+            is_pending: tx.is_pending,
+            payment_id,
+            destination_addresses,
+            source_addresses,
+            unlock_time: Some(tx.unlock_time),
+            extra,
+        };
+        unsafe { fuego_wallet_free_transaction_info(tx_ptr); }
+        Ok(out)
     }
 
     /// Estimate transaction fee
@@ -840,21 +848,20 @@ impl RealCryptoNoteWallet {
             return Err(WalletError::Generic("Block not found".to_string()));
         }
 
-        // TODO: Parse real block info from C++ data structure
-        unsafe {
-            fuego_wallet_free_block_info(block_ptr);
-        }
-
-        Ok(BlockInfo {
-            height,
-            hash: "block_hash_placeholder".to_string(),
-            timestamp: 0,
-            difficulty: 0,
-            reward: 0,
-            size: 0,
-            transaction_count: 0,
-            is_main_chain: true,
-        })
+        let block = unsafe { &*(block_ptr as *const BlockInfoFFI) };
+        let hash = unsafe { CStr::from_ptr(block.hash.as_ptr()) }.to_string_lossy().to_string();
+        let out = BlockInfo {
+            height: block.height,
+            hash,
+            timestamp: block.timestamp,
+            difficulty: block.difficulty,
+            reward: block.reward,
+            size: block.size,
+            transaction_count: block.transaction_count,
+            is_main_chain: block.is_main_chain,
+        };
+        unsafe { fuego_wallet_free_block_info(block_ptr); }
+        Ok(out)
     }
 
     /// Start mining
@@ -903,20 +910,20 @@ impl RealCryptoNoteWallet {
             ));
         }
 
-        // TODO: Parse real mining info from C++ data structure
-        unsafe {
-            fuego_wallet_free_mining_info(info_ptr);
-        }
-
-        Ok(MiningInfo {
-            is_mining: false,
-            hashrate: 0.0,
-            difficulty: 0,
-            block_reward: 0,
-            pool_address: None,
-            worker_name: None,
-            threads: 0,
-        })
+        let info = unsafe { &*(info_ptr as *const MiningInfoFFI) };
+        let pool = if info.pool_address[0] != 0 { Some(unsafe { CStr::from_ptr(info.pool_address.as_ptr()) }.to_string_lossy().to_string()) } else { None };
+        let worker = if info.worker_name[0] != 0 { Some(unsafe { CStr::from_ptr(info.worker_name.as_ptr()) }.to_string_lossy().to_string()) } else { None };
+        let out = MiningInfo {
+            is_mining: info.is_mining,
+            hashrate: info.hashrate,
+            difficulty: info.difficulty,
+            block_reward: info.block_reward,
+            pool_address: pool,
+            worker_name: worker,
+            threads: info.threads,
+        };
+        unsafe { fuego_wallet_free_mining_info(info_ptr); }
+        Ok(out)
     }
 
     /// Disconnect from network
@@ -952,21 +959,9 @@ impl RealCryptoNoteWallet {
             ));
         }
 
-        // Parse deposit ID from deposit_ptr
-        // For now, return a mock ID - real implementation would parse C++ deposit data
-        // TODO: Implement real deposit creation using CryptoNote C++ functionality
-        let deposit_id = format!(
-            "deposit_{}_{}_{}",
-            amount,
-            term,
-            chrono::Utc::now().timestamp()
-        );
-
-        // Free the deposit pointer
-        unsafe {
-            fuego_wallet_free_string(deposit_ptr as *mut c_char);
-        }
-
+        // Read deposit ID as C string
+        let deposit_id = unsafe { CStr::from_ptr(deposit_ptr as *const c_char).to_string_lossy().to_string() };
+        unsafe { fuego_wallet_free_string(deposit_ptr as *mut c_char); }
         Ok(deposit_id)
     }
 
@@ -988,20 +983,9 @@ impl RealCryptoNoteWallet {
             ));
         }
 
-        // Parse transaction hash from tx_ptr
-        // For now, return a mock hash - real implementation would parse C++ transaction data
-        // TODO: Implement real deposit withdrawal using CryptoNote C++ functionality
-        let tx_hash = format!(
-            "withdraw_tx_{}_{}",
-            deposit_id,
-            chrono::Utc::now().timestamp()
-        );
-
-        // Free the transaction pointer
-        unsafe {
-            fuego_wallet_free_string(tx_ptr as *mut c_char);
-        }
-
+        // Read transaction hash as C string
+        let tx_hash = unsafe { CStr::from_ptr(tx_ptr as *const c_char).to_string_lossy().to_string() };
+        unsafe { fuego_wallet_free_string(tx_ptr as *mut c_char); }
         Ok(tx_hash)
     }
 

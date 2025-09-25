@@ -161,26 +161,7 @@ async function loadSyncProgress() {
   }
 }
 
-// Connect to Fuego network
-async function connectToFuegoNetwork() {
-  try {
-    console.log("🔗 Connecting to Fuego L1 network...");
-    await invoke("node_connect", { address: "fuego.spaceportx.net", port: 18180 });
-    console.log("✅ Connected to Fuego network successfully");
-  } catch (error) {
-    console.error("❌ Network connection error:", error);
-    // Try backup nodes
-    try {
-      console.log("🔄 Trying backup node...");
-      await invoke("node_connect", {
-        address: "127.0.0.1",
-        port: 18180
-      });
-    } catch (backupError) {
-      console.error("❌ Backup connection failed:", backupError);
-    }
-  }
-}
+
 
 // Start real-time updates
 function startRealTimeUpdates() {

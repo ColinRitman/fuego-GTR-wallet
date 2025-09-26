@@ -31,7 +31,11 @@ jobs:
             file-extension: exe
           - os: macos-latest
             platform: macos
-            artifact-name: fuegogt-wallet-macos
+            artifact-name: fuegogt-wallet-macos-apple-silicon
+            file-extension: dmg
+          - os: macos-13
+            platform: macos
+            artifact-name: fuegogt-wallet-macos-intel
             file-extension: dmg
 
     steps:
@@ -138,9 +142,14 @@ jobs:
             cp fuegogt-wallet-windows/*.exe release-assets/fuegogt-wallet-windows.exe
           fi
           
-          # macOS DMG
-          if compgen -G "fuegogt-wallet-macos/*.dmg" > /dev/null; then
-            cp fuegogt-wallet-macos/*.dmg release-assets/fuegogt-wallet-macos.dmg
+          # macOS Apple Silicon DMG
+          if compgen -G "fuegogt-wallet-macos-apple-silicon/*.dmg" > /dev/null; then
+            cp fuegogt-wallet-macos-apple-silicon/*.dmg release-assets/fuegogt-wallet-macos-apple-silicon.dmg
+          fi
+
+          # macOS Intel DMG
+          if compgen -G "fuegogt-wallet-macos-intel/*.dmg" > /dev/null; then
+            cp fuegogt-wallet-macos-intel/*.dmg release-assets/fuegogt-wallet-macos-intel.dmg
           fi
           
           # Create checksums
@@ -172,12 +181,13 @@ jobs:
           ### Installation
           - **Linux**: Download the AppImage file and make it executable
           - **Windows**: Download the .exe file and run as administrator
-          - **macOS**: Download the .dmg file and drag to Applications folder
+          - **macOS Apple Silicon**: Download the fuegogt-wallet-macos-apple-silicon.dmg file and drag to Applications folder
+          - **macOS Intel**: Download the fuegogt-wallet-macos-intel.dmg file and drag to Applications folder
           
           ### System Requirements
           - **Linux**: Ubuntu 18.04+ or equivalent
           - **Windows**: Windows 10+ (64-bit)
-          - **macOS**: macOS 10.15+ (Catalina or later)
+          - **macOS**: macOS 10.15+ (Catalina or later) - Intel and Apple Silicon supported
           
           ### Security
           All releases are cryptographically signed and checksums are provided for verification.

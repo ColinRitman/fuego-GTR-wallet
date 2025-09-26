@@ -560,7 +560,7 @@ async fn estimate_fee(address: String, amount: u64, mixin: Option<u64>) -> Resul
     let mut real_wallet = RealCryptoNoteWallet::new();
     let _ = real_wallet.open_wallet("/tmp/fuego_wallet.wallet", "fuego_password")
         .or_else(|_| real_wallet.create_wallet("fuego_password", "/tmp/fuego_wallet.wallet", None, 0));
-    wallet.estimate_transaction_fee(&address, amount, mixin.unwrap_or(5)).map_err(|e| e.to_string())
+    real_wallet.estimate_transaction_fee(&address, amount, mixin.unwrap_or(5)).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

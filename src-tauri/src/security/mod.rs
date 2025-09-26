@@ -259,7 +259,7 @@ pub struct WalletEncryption;
 impl WalletEncryption {
     /// Encrypt sensitive data with AES-256-GCM using Argon2-derived key
     pub fn encrypt_data(data: &str, password: &str) -> Result<String, String> {
-        use aes_gcm::{Aes256Gcm, Key, Nonce};
+        use aes_gcm::{Aes256Gcm, Key, Nonce, KeyInit};
         use aes_gcm::aead::{Aead, OsRng};
         use rand::RngCore;
         use argon2::{Argon2, PasswordHasher};
@@ -295,7 +295,7 @@ impl WalletEncryption {
     
     /// Decrypt sensitive data with AES-256-GCM using Argon2-derived key
     pub fn decrypt_data(encrypted_data: &str, password: &str) -> Result<String, String> {
-        use aes_gcm::{Aes256Gcm, Key, Nonce};
+        use aes_gcm::{Aes256Gcm, Key, Nonce, KeyInit};
         use aes_gcm::aead::{Aead};
         use argon2::{Argon2, PasswordVerifier};
         use argon2::password_hash::{SaltString, PasswordHash, PasswordHasher as _, PasswordVerifier as _};
@@ -306,7 +306,7 @@ impl WalletEncryption {
         let n_b64 = v.get("n").and_then(|x| x.as_str()).ok_or("Missing nonce")?;
         let c_b64 = v.get("c").and_then(|x| x.as_str()).ok_or("Missing ciphertext")?;
 
-        let salt = SaltString::new(s).map_err(|e| format!("Salt error: {}", e))?;
+        let salt = SaltString::from_b64(s).map_err(|e| format!("Salt error: {}", e))?;
         let argon2 = Argon2::default();
         // Derive same key
         let hash = argon2.hash_password(password.as_bytes(), &salt)

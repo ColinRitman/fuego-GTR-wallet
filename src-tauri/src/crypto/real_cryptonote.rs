@@ -213,7 +213,7 @@ pub struct SyncProgress {
 }
 
 // FFI bindings for real CryptoNote operations
-extern "C" {
+unsafe extern "C" {
     // Wallet operations
     fn fuego_wallet_create(
         password: *const c_char,

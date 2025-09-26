@@ -20,7 +20,7 @@ The security of Fuego's L1 network (& wallets) is paramount. If you discover a s
 - Contact individual maintainers directly
 
 ### PLEASE ✅ DO
-1. **Email Fuego Security privately** at [fuegosecurity@proton.me](mailto:fuegosecurity@proton.me)
+1. **Email Fuego Security Response Team privately** at [fuegosecurity@proton.me](mailto:fuegosecurity@proton.me)
 2. **Include detailed information**:
    - Description of the vulnerability
    - Steps to reproduce
@@ -141,10 +141,11 @@ Contributors are:
 5. **Recovery** - Restore normal operations
 6. **Lessons Learned** - Improve security measures
 
-### Contact Information
+### Contact Information 
 - **Security Team**: [fuegosecurity@proton.me](mailto:fuegosecurity@proton.me)
-- **Emergency Contact**: ? [founder/dev](mailto:aejt@pm.me)
-- **General Support**: [use discord](discord.usexfg.org)
+- **Emergency Email Contact**: ? [founder/dev](mailto:aejt@pm.me)
+- **Simplex**: Additional emergency [contact](https://simplex.chat/invitation#/?v=2-7&smp=smp%3A%2F%2F0YuTwO05YJWS8rkjn9eLJDjQhFKvIYd8d4xG8X1blIU%3D%40smp8.simplex.im%2F1ZUOmPKsP23oG2n4WyYnLnJN8OESqPWT%23%2F%3Fv%3D1-4%26dh%3DMCowBQYDK2VuAyEAR92wBfR8cLpH8VizZ3NenC8wtvMJ2SeP3BkMuBuQ7kQ%253D%26q%3Dm%26k%3Ds%26srv%3Dbeccx4yfxxbvyhqypaavemqurytl6hozr47wfc7uuecacjqdvwpw2xid.onion&e2e=v%3D2-3%26x3dh%3DMEIwBQYDK2VvAzkAQc2AmjUeraIn9N0ggXF5L5hkWYRUyOYEP1NtdSaWnu9Eu5xrA4Aa1io6s4668B9nFVoRtHTHsO0%3D%2CMEIwBQYDK2VvAzkAqvm69F0rIcnxeDWrl2aRIUO-8OwAwidnqIJqxaibVJB66wGe_S0iRzeHLATg7u79FOuLv_nBvTA%3D)
+- **For General Support**: please use [XFG🔥discord](https://discord.usexfg.org)
 
 ## 📚 Security Resources
 

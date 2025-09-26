@@ -11,7 +11,7 @@ use std::ptr;
 use crate::utils::error::WalletResult;
 
 // FFI function signatures for CryptoNote wallet operations
-extern "C" {
+unsafe extern "C" {
     // Wallet creation and management
     fn crypto_note_wallet_create(
         password: *const c_char,

@@ -223,7 +223,7 @@ impl ResourceMonitor {
     
     /// Get current CPU usage (simplified implementation)
     fn get_cpu_usage() -> f64 {
-        use sysinfo::{System, SystemExt};
+        use sysinfo::System;
         let mut sys = System::new();
         sys.refresh_cpu();
         // global_cpu_info().cpu_usage() returns 0..100
@@ -232,7 +232,7 @@ impl ResourceMonitor {
     
     /// Get current memory usage
     fn get_memory_usage() -> u64 {
-        use sysinfo::{System, SystemExt};
+        use sysinfo::System;
         let mut sys = System::new();
         sys.refresh_memory();
         // used memory in bytes (approx)

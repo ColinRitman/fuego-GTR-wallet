@@ -2,7 +2,7 @@
 
 ## 🔒 Supported Versions
 
-We provide security updates for the following versions of Fuego GTR Wallet:
+We'll provide security updates for the following versions of Fuego GTR Wallet:
 
 | Version | Supported          |
 | ------- | ------------------ |
@@ -20,14 +20,15 @@ The security of Fuego's L1 network (& wallets) is paramount. If you discover a s
 - Contact individual maintainers directly
 
 ### PLEASE ✅ DO
-1. **Email us privately** at [security@fuego.network](mailto:security@fuego.network)
+1. **Email Fuego Security privately** at [fuegosecurity@proton.me](mailto:fuegosecurity@proton.me)
 2. **Include detailed information**:
    - Description of the vulnerability
    - Steps to reproduce
    - Potential impact
    - Suggested fixes (if any)
-3. **Wait for our response** before any public disclosure
-
+3. **PLEASE WAIT for response** before any public disclosure
+   - use fallback contact methods (below) if no response within 48hrs.
+     
 ### 📧 What to Include
 
 Please provide:
@@ -170,19 +171,18 @@ Contributors are:
 6. **Post-release monitoring**
 
 ### Notification Methods
-- **GitHub Security Advisories**
+- **GitHub Security Reviews**
 - **Release notes**
 - **Email notifications** (for critical issues)
 - **In-app notifications**
 
-## 📞 Contact
+## 📇 𝌕 Contact
 
-For security-related questions or concerns:
+For all security-related issues or concerns:
 
 - **Email**: [fuegosecurity@protonmail](mailto:fuegosecurity@proton.me)
-- **PGP Key**: Available upon request
-- **Signal**: For sensitive communications
-- **General**: Join the Fuego Mob in [discord](discord.usexfg.org)
+- **Simplex**: Additional [contact](https://simplex.chat/invitation#/?v=2-7&smp=smp%3A%2F%2F0YuTwO05YJWS8rkjn9eLJDjQhFKvIYd8d4xG8X1blIU%3D%40smp8.simplex.im%2F1ZUOmPKsP23oG2n4WyYnLnJN8OESqPWT%23%2F%3Fv%3D1-4%26dh%3DMCowBQYDK2VuAyEAR92wBfR8cLpH8VizZ3NenC8wtvMJ2SeP3BkMuBuQ7kQ%253D%26q%3Dm%26k%3Ds%26srv%3Dbeccx4yfxxbvyhqypaavemqurytl6hozr47wfc7uuecacjqdvwpw2xid.onion&e2e=v%3D2-3%26x3dh%3DMEIwBQYDK2VvAzkAQc2AmjUeraIn9N0ggXF5L5hkWYRUyOYEP1NtdSaWnu9Eu5xrA4Aa1io6s4668B9nFVoRtHTHsO0%3D%2CMEIwBQYDK2VvAzkAqvm69F0rIcnxeDWrl2aRIUO-8OwAwidnqIJqxaibVJB66wGe_S0iRzeHLATg7u79FOuLv_nBvTA%3D) option for private disclosure of any network security vulnerability.
+- **General**: Join the Fuego Mob in [discord](https://discord.usexfg.org)
 ---
 
 **Last Updated**: Sept 2025  

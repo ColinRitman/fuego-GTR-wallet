@@ -29,9 +29,13 @@ jobs:
             platform: windows
             artifact-name: fuegogt-wallet-windows
             file-extension: exe
-          - os: macos-latest
-            platform: macos
-            artifact-name: fuegogt-wallet-macos
+          - os: macos-13
+            platform: macos-intel
+            artifact-name: fuegogt-wallet-macos-intel
+            file-extension: dmg
+          - os: macos-latest-xlarge
+            platform: macos-apple-silicon
+            artifact-name: fuegogt-wallet-macos-apple-silicon
             file-extension: dmg
 
     steps:
@@ -64,7 +68,7 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Install dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -80,13 +84,13 @@ jobs:
             file
 
       - name: Install dependencies (macOS)
-        if: matrix.os == 'macos-latest'
+        if: matrix.platform == 'macos-intel' || matrix.platform == 'macos-apple-silicon'
         run: |
           # macOS dependencies are handled by Tauri automatically
           echo "macOS dependencies handled by Tauri"
 
       - name: Install dependencies (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.platform == 'windows'
         run: |
           # Windows dependencies are handled by Tauri automatically
           echo "Windows dependencies handled by Tauri"
@@ -138,9 +142,14 @@ jobs:
             cp fuegogt-wallet-windows/*.exe release-assets/fuegogt-wallet-windows.exe
           fi
           
-          # macOS DMG
-          if compgen -G "fuegogt-wallet-macos/*.dmg" > /dev/null; then
-            cp fuegogt-wallet-macos/*.dmg release-assets/fuegogt-wallet-macos.dmg
+          # macOS Intel DMG
+          if compgen -G "fuegogt-wallet-macos-intel/*.dmg" > /dev/null; then
+            cp fuegogt-wallet-macos-intel/*.dmg release-assets/fuegogt-wallet-macos-intel.dmg
+          fi
+          
+          # macOS Apple Silicon DMG
+          if compgen -G "fuegogt-wallet-macos-apple-silicon/*.dmg" > /dev/null; then
+            cp fuegogt-wallet-macos-apple-silicon/*.dmg release-assets/fuegogt-wallet-macos-apple-silicon.dmg
           fi
           
           # Create checksums
@@ -172,7 +181,8 @@ jobs:
           ### Installation
           - **Linux**: Download the AppImage file and make it executable
           - **Windows**: Download the .exe file and run as administrator
-          - **macOS**: Download the .dmg file and drag to Applications folder
+          - **macOS Intel**: Download the macos-intel.dmg file and drag to Applications folder
+          - **macOS Apple Silicon**: Download the macos-apple-silicon.dmg file and drag to Applications folder
           
           ### System Requirements
           - **Linux**: Ubuntu 18.04+ or equivalent
